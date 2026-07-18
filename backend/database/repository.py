@@ -52,6 +52,7 @@ def save_weekly_snapshot(rows: list[dict], week_of: date | None = None) -> date:
             target.assertions_passing_pct = row.get("assertions_passing_pct")
             target.freshness_score = row.get("freshness_score")
             target.documentation_score = row.get("documentation_score")
+            target.ownership_score = row.get("ownership_score")
             target.rank_this_week = row.get("rank_this_week")
             target.rank_last_week = prev_ranks.get(row["domain_name"])
             target.written_to_datahub = row.get("written_to_datahub", True)
@@ -87,6 +88,7 @@ def load_seed_if_empty() -> int:
                     assertions_passing_pct=row.get("assertions_passing_pct"),
                     freshness_score=row.get("freshness_score"),
                     documentation_score=row.get("documentation_score"),
+                    ownership_score=row.get("ownership_score"),
                     rank_this_week=row.get("rank_this_week"),
                     rank_last_week=row.get("rank_last_week"),
                     written_to_datahub=True,
@@ -164,6 +166,7 @@ def _row_to_dict(r: DomainScore) -> dict:
         "assertions_passing_pct": float(r.assertions_passing_pct) if r.assertions_passing_pct is not None else None,
         "freshness_score": float(r.freshness_score) if r.freshness_score is not None else None,
         "documentation_score": float(r.documentation_score) if r.documentation_score is not None else None,
+        "ownership_score": float(r.ownership_score) if r.ownership_score is not None else None,
         "rank_this_week": r.rank_this_week,
         "rank_last_week": r.rank_last_week,
     }

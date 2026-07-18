@@ -11,6 +11,7 @@ export interface Team {
   rank_this_week: number | null;
   rank_last_week: number | null;
   score_last_week: number | null;
+  ownership_score: number | null;
   spark: number[];
 }
 
@@ -38,6 +39,13 @@ export async function getHistory(domain: string): Promise<HistoryPoint[]> {
   if (!res.ok) throw new Error("Failed to load history");
   const data = await res.json();
   return data.history;
+}
+
+/** Correct English ordinals: 1st, 2nd, 3rd, 4th ... 21st, 22nd. */
+export function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
 }
 
 export function tierOf(score: number): "gold" | "silver" | "bronze" | "at-risk" {

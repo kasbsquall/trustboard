@@ -8,6 +8,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 1,
       "rank_last_week": null
     },
@@ -19,6 +20,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 2,
       "rank_last_week": null
     },
@@ -30,6 +32,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 5,
       "rank_last_week": null
     },
@@ -41,6 +44,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 4,
       "rank_last_week": null
     },
@@ -52,6 +56,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 3,
       "rank_last_week": null
     },
@@ -63,6 +68,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 1,
       "rank_last_week": 1
     },
@@ -74,6 +80,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 2,
       "rank_last_week": 2
     },
@@ -85,6 +92,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 5,
       "rank_last_week": 5
     },
@@ -96,6 +104,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 3,
       "rank_last_week": 3
     },
@@ -107,6 +116,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 4,
       "rank_last_week": 4
     },
@@ -118,6 +128,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 1,
       "rank_last_week": 1
     },
@@ -129,6 +140,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 2,
       "rank_last_week": 2
     },
@@ -140,6 +152,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 3,
       "rank_last_week": 3
     },
@@ -151,6 +164,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 5,
       "rank_last_week": 5
     },
@@ -162,6 +176,7 @@
       "assertions_passing_pct": null,
       "freshness_score": null,
       "documentation_score": null,
+      "ownership_score": null,
       "rank_this_week": 4,
       "rank_last_week": 4
     },
@@ -173,6 +188,7 @@
       "assertions_passing_pct": 91.67,
       "freshness_score": 0.0,
       "documentation_score": 84.26,
+      "ownership_score": 96.3,
       "rank_this_week": 1,
       "rank_last_week": 1
     },
@@ -184,6 +200,7 @@
       "assertions_passing_pct": 75.0,
       "freshness_score": null,
       "documentation_score": 66.67,
+      "ownership_score": 66.67,
       "rank_this_week": 2,
       "rank_last_week": 2
     },
@@ -195,6 +212,7 @@
       "assertions_passing_pct": 50.0,
       "freshness_score": null,
       "documentation_score": 43.75,
+      "ownership_score": 62.5,
       "rank_this_week": 3,
       "rank_last_week": 3
     },
@@ -206,6 +224,7 @@
       "assertions_passing_pct": 50.0,
       "freshness_score": 0.0,
       "documentation_score": 54.17,
+      "ownership_score": 58.33,
       "rank_this_week": 4,
       "rank_last_week": 4
     },
@@ -217,6 +236,7 @@
       "assertions_passing_pct": 25.0,
       "freshness_score": null,
       "documentation_score": 53.12,
+      "ownership_score": 50.0,
       "rank_this_week": 5,
       "rank_last_week": 5
     }

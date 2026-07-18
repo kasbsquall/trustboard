@@ -37,6 +37,7 @@ def _snapshot_rows(results) -> list[dict]:
                 "assertions_passing_pct": comps.get("quality"),
                 "freshness_score": comps.get("freshness"),
                 "documentation_score": comps.get("documentation"),
+                "ownership_score": comps.get("ownership"),
                 "rank_this_week": rank,
                 "written_to_datahub": True,
             }

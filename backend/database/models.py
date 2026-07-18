@@ -33,6 +33,7 @@ class DomainScore(Base):
     assertions_passing_pct: Mapped[float | None] = mapped_column(Numeric(5, 2))
     freshness_score: Mapped[float | None] = mapped_column(Numeric(5, 2))
     documentation_score: Mapped[float | None] = mapped_column(Numeric(5, 2))
+    ownership_score: Mapped[float | None] = mapped_column(Numeric(5, 2))
     rank_this_week: Mapped[int | None] = mapped_column(Integer)
     rank_last_week: Mapped[int | None] = mapped_column(Integer)
     written_to_datahub: Mapped[bool] = mapped_column(Boolean, default=False)

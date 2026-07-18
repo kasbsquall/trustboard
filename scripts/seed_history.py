@@ -72,6 +72,7 @@ def main() -> None:
                 "assertions_passing_pct": comps.get("quality"),
                 "freshness_score": comps.get("freshness"),
                 "documentation_score": comps.get("documentation"),
+                "ownership_score": comps.get("ownership"),
                 "rank_this_week": rank,
             }
         )

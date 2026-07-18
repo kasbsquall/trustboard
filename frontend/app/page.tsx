@@ -14,34 +14,45 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import { Logo } from "@/components/Logo";
 import { Sparkline } from "@/components/Sparkline";
-import { getLeaderboard, tierOf, type Team } from "@/lib/api";
-
-const SCORE_PARTS = [
-  { Icon: SealCheck, weight: "35%", label: "Quality, from passing data tests" },
-  { Icon: BookOpen, weight: "25%", label: "Documentation and glossary coverage" },
-  { Icon: UserCircle, weight: "20%", label: "Ownership" },
-  { Icon: ClockCounterClockwise, weight: "20%", label: "Lineage freshness" },
-];
-
-const CYCLE = [
-  { Icon: MagnifyingGlass, name: "Auditor", text: "Reads quality, docs, ownership and lineage from DataHub." },
-  { Icon: PencilSimpleLine, name: "Scribe", text: "Writes the score back as a structured property, tags each dataset and opens incidents." },
-  { Icon: Megaphone, name: "Herald", text: "Posts these standings to Slack every week." },
-  { Icon: ShieldCheck, name: "Gatekeeper", text: "A separate agent asks DataHub if a dataset is trustworthy before using it." },
-];
+import { getLeaderboard, ordinal, tierOf, type Team } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
-const ORDINAL = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
+const SCORE_PARTS = [
+  { Icon: SealCheck, weight: "35%", label: "Data tests passing" },
+  { Icon: BookOpen, weight: "25%", label: "Documentation and glossary coverage" },
+  { Icon: UserCircle, weight: "20%", label: "Datasets with an assigned owner" },
+  { Icon: ClockCounterClockwise, weight: "20%", label: "Lineage and update recency" },
+];
+
+const AGENTS = [
+  { Icon: MagnifyingGlass, name: "Auditor", text: "Reads quality, docs, ownership and lineage from DataHub." },
+  { Icon: PencilSimpleLine, name: "Scribe", text: "Writes the score back as a structured property, tags every dataset, and opens incidents on the ones dragging the team down." },
+  { Icon: Megaphone, name: "Herald", text: "Posts these standings to Slack every week." },
+  { Icon: ShieldCheck, name: "Gatekeeper", text: "A separate agent that asks DataHub whether a dataset is trustworthy before building on it." },
+];
 
 function deltaOf(team: Team) {
-  if (team.score_last_week == null) return { label: "new", cls: "delta-flat" };
+  if (team.score_last_week == null) return { label: "First week", cls: "delta-flat", dir: "" };
   const diff = team.trust_score - team.score_last_week;
-  if (Math.abs(diff) < 0.05) return { label: "level", cls: "delta-flat" };
+  if (Math.abs(diff) < 0.05) return { label: "No change", cls: "delta-flat", dir: "" };
   return {
     label: `${diff > 0 ? "+" : "−"}${Math.abs(diff).toFixed(1)}`,
     cls: diff > 0 ? "delta-up" : "delta-down",
+    dir: diff > 0 ? "up " : "down ",
   };
+}
+
+function weakestOf(team: Team) {
+  const parts = [
+    ["tests", team.assertions_passing_pct],
+    ["docs", team.documentation_score],
+    ["ownership", team.ownership_score],
+    ["freshness", team.freshness_score],
+  ].filter(([, v]) => v != null) as [string, number][];
+  if (parts.length === 0) return "No signals yet";
+  const [name, value] = parts.reduce((a, b) => (b[1] < a[1] ? b : a));
+  return `Weakest: ${name} ${Math.round(value)}%`;
 }
 
 export default async function Home() {
@@ -52,8 +63,7 @@ export default async function Home() {
     return (
       <main className="shell">
         <p className="empty-note">
-          The TrustBoard API is unreachable. Start it with{" "}
-          <code>uvicorn backend.main:app</code>.
+          <b>Standings unavailable.</b> The TrustBoard API did not respond. Retry in a moment.
         </p>
       </main>
     );
@@ -63,81 +73,86 @@ export default async function Home() {
   if (teams.length === 0) {
     return (
       <main className="shell">
-        <p className="empty-note">No scores recorded yet. Run the weekly cycle to populate the league.</p>
+        <p className="empty-note">
+          <b>No standings yet.</b> The first table appears after the Auditor completes a run.
+        </p>
       </main>
     );
   }
 
-  const [leader, ...rest] = teams;
+  const leader = teams[0];
   const leaderTier = tierOf(leader.trust_score);
-  const week = leader.week_of;
+  const leaderDelta = deltaOf(leader);
+  const quality = leader.assertions_passing_pct;
 
   return (
     <main className="shell">
       <header className="masthead">
-        <div>
-          <div className="masthead__mark">
-            <Logo size={26} />
-            <span className="masthead__kicker">TrustBoard</span>
+        <div className="masthead__lockup">
+          <Logo size={44} />
+          <div>
+            <div className="masthead__kicker">TrustBoard</div>
+            <h1>The Trust League</h1>
           </div>
-          <h1>Data Trust League</h1>
         </div>
         <p className="masthead__meta">
-          Week of <b>{week}</b>
+          Week of <b>{leader.week_of}</b>
           <br />
-          Scored from DataHub signals and written back to the graph.
+          Every score is read from DataHub and written back as metadata.
         </p>
       </header>
 
-      <section className={`headline tier-${leaderTier}`} aria-label="Team of the week">
+      <Link
+        href={`/domain/${encodeURIComponent(leader.domain_name)}`}
+        className={`headline tier-${leaderTier}`}
+        aria-label={`First place, ${leader.domain_name}, trust score ${leader.trust_score.toFixed(1)}, ${leaderTier.replace("-", " ")} tier`}
+      >
         <div>
           <div className="headline__label">
-            <Crown size={13} weight="light" />
-            Team of the week
+            <Crown size={12} weight="light" aria-hidden="true" />
+            1st · Team of the week
           </div>
           <div className="headline__team">{leader.domain_name}</div>
           <p className="headline__sub">
-            Leads on {leader.assertions_passing_pct != null ? `${Math.round(leader.assertions_passing_pct)}% passing checks` : "quality checks"} across{" "}
-            {leader.rank_last_week === 1 ? "a second consecutive week" : "the standings"}.
+            {leader.rank_last_week === 1 ? "Holds the top spot again" : "Takes the top spot"}
+            {quality != null ? `, with ${Math.round(quality)}% of data tests passing.` : "."}
             {most_improved && most_improved.domain_name !== leader.domain_name && (
-              <> {most_improved.domain_name} is the week&apos;s biggest climber, up {most_improved.score_delta.toFixed(1)}.</>
+              <> {most_improved.domain_name} climbed the most, up {most_improved.score_delta.toFixed(1)} points.</>
             )}
           </p>
         </div>
         <div className="headline__score tnum">
           {leader.trust_score.toFixed(1)}
-          <span>{leaderTier.replace("-", " ")}</span>
+          <span>{leaderTier.replace("-", " ")} tier</span>
         </div>
-      </section>
+      </Link>
 
       <section className="standings" aria-label="Standings">
         <div className="standings__head">
-          <span>Pos</span>
+          <span>Rank</span>
           <span>Team</span>
-          <span>Form</span>
+          <span>Trend</span>
           <span>Score</span>
-          <span>Week</span>
+          <span>Change</span>
           <span>Tier</span>
         </div>
 
-        {rest.map((team, i) => {
+        {teams.slice(1).map((team, i) => {
           const tier = tierOf(team.trust_score);
           const delta = deltaOf(team);
+          const position = team.rank_this_week ?? i + 2;
           return (
             <Link
               key={team.domain_name}
               href={`/domain/${encodeURIComponent(team.domain_name)}`}
               className={`row tier-${tier}`}
               style={{ "--i": Math.min(i, 7) } as React.CSSProperties}
+              aria-label={`${ordinal(position)}, ${team.domain_name}, trust score ${team.trust_score.toFixed(1)}, ${delta.dir}${delta.label}, ${tier.replace("-", " ")} tier`}
             >
-              <div className="row__rank tnum">{ORDINAL[i + 1] ?? `${i + 2}th`}</div>
+              <div className="row__rank tnum">{ordinal(position)}</div>
               <div>
                 <div className="row__team">{team.domain_name}</div>
-                <div className="row__datasets">
-                  {team.documentation_score != null
-                    ? `${Math.round(team.documentation_score)}% documented`
-                    : "signals pending"}
-                </div>
+                <div className="row__datasets">{weakestOf(team)}</div>
               </div>
               <div className="row__spark">
                 <Sparkline
@@ -147,8 +162,8 @@ export default async function Home() {
               </div>
               <div className="row__score tnum">{team.trust_score.toFixed(1)}</div>
               <div className={`row__delta tnum ${delta.cls}`}>
-                {delta.cls === "delta-up" && <TrendUp size={13} weight="light" />}
-                {delta.cls === "delta-down" && <TrendDown size={13} weight="light" />}
+                {delta.cls === "delta-up" && <TrendUp size={13} weight="light" aria-hidden="true" />}
+                {delta.cls === "delta-down" && <TrendDown size={13} weight="light" aria-hidden="true" />}
                 {delta.label}
               </div>
               <div className="tier-tag">{tier.replace("-", " ")}</div>
@@ -163,19 +178,24 @@ export default async function Home() {
           <ul className="legend">
             {SCORE_PARTS.map(({ Icon, weight, label }) => (
               <li key={label}>
-                <Icon size={16} weight="light" />
+                <Icon size={15} weight="light" aria-hidden="true" />
                 <span className="legend__weight tnum">{weight}</span>
                 <span>{label}</span>
               </li>
             ))}
           </ul>
+          <p className="legend__note">
+            Tiers: gold 80 and above, silver 60, bronze 40, at risk below 40. Missing signals are
+            removed and the rest renormalized, so a gap shows as reduced coverage instead of a
+            hidden zero.
+          </p>
         </div>
         <div>
-          <h2>The weekly cycle</h2>
+          <h2>The agents behind it</h2>
           <ul className="legend legend--cycle">
-            {CYCLE.map(({ Icon, name, text }) => (
+            {AGENTS.map(({ Icon, name, text }) => (
               <li key={name}>
-                <Icon size={16} weight="light" />
+                <Icon size={15} weight="light" aria-hidden="true" />
                 <span>
                   <b>{name}</b> {text}
                 </span>
