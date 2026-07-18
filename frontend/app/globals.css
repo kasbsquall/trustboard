@@ -154,18 +154,19 @@ a {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  column-gap: 4px;
+  column-gap: 6px;
 }
 
 .masthead__lockup > svg { color: var(--text); }
 
-.masthead__kicker {
-  font-size: 0.6875rem;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  font-weight: 500;
-  margin-right: -0.26em;
+/* Una sola marca en la cabecera: el h1 es el producto. La liga es el
+   descriptor de la vista, no un segundo nombre compitiendo. */
+.masthead__tagline {
+  margin-top: 6px;
+  font-size: var(--step--1);
+  font-weight: 400;
+  color: var(--text-faint);
+  letter-spacing: 0;
 }
 
 .masthead h1 {

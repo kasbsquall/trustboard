@@ -91,8 +91,10 @@ export default async function Home() {
         <div className="masthead__lockup">
           <Logo size={44} />
           <div>
-            <div className="masthead__kicker">TrustBoard</div>
-            <h1>The Trust League</h1>
+            <h1>TrustBoard</h1>
+            <p className="masthead__tagline">
+              The weekly trust league for data teams
+            </p>
           </div>
         </div>
         <p className="masthead__meta">
