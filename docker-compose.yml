@@ -1,0 +1,26 @@
+# Infraestructura propia de TrustBoard.
+# DataHub se levanta aparte con su propio quickstart (datahub docker quickstart),
+# por eso no se incluye aqui. Puerto 5433 para no chocar con el PostgreSQL
+# interno de DataHub ni con un postgres local en 5432.
+
+services:
+  trustboard-db:
+    image: postgres:16-alpine
+    container_name: trustboard-db
+    environment:
+      POSTGRES_USER: trustboard
+      POSTGRES_PASSWORD: trustboard
+      POSTGRES_DB: trustboard
+    ports:
+      - "5433:5432"
+    volumes:
+      - trustboard_pgdata:/var/lib/postgresql/data
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trustboard"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  trustboard_pgdata:

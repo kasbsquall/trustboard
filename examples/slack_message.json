@@ -1,0 +1,41 @@
+{
+  "text": "TrustBoard Weekly \u2014 Team of the week: Data Platform Team (81.6)",
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "TrustBoard Weekly \u2014 Data Trust League"
+      }
+    },
+    {
+      "type": "context",
+      "elements": [
+        {
+          "type": "mrkdwn",
+          "text": "Trust Score = quality + documentation + ownership + freshness, computed from DataHub and written back to the graph."
+        }
+      ]
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "`1st`  *Data Platform Team* \u2014 81.6  (GOLD)  _new_\n`2nd`  *Ecommerce Operations* \u2014 70.3  (SILVER)  _new_\n`3rd`  *Engineering Division* \u2014 51.2  (BRONZE)  _new_\n`4th`  *E-Commerce* \u2014 42.7  (BRONZE)  _new_\n`5th`  *Marketing* \u2014 40.0  (BRONZE)  _new_"
+      }
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Team of the week:* Data Platform Team (81.6, GOLD)"
+      }
+    }
+  ]
+}

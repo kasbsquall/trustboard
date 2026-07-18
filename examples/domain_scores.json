@@ -1,0 +1,64 @@
+[
+  {
+    "team": "Data Platform Team",
+    "score": 81.57,
+    "tier": "gold",
+    "components": {
+      "quality": 91.67,
+      "documentation": 84.26,
+      "ownership": 96.3,
+      "freshness": 0.0
+    },
+    "datasets": 27,
+    "weakest": "freshness"
+  },
+  {
+    "team": "Ecommerce Operations",
+    "score": 70.31,
+    "tier": "silver",
+    "components": {
+      "quality": 75.0,
+      "documentation": 66.67,
+      "ownership": 66.67
+    },
+    "datasets": 12,
+    "weakest": "documentation"
+  },
+  {
+    "team": "Engineering Division",
+    "score": 51.17,
+    "tier": "bronze",
+    "components": {
+      "quality": 50.0,
+      "documentation": 43.75,
+      "ownership": 62.5
+    },
+    "datasets": 8,
+    "weakest": "documentation"
+  },
+  {
+    "team": "E-Commerce",
+    "score": 42.71,
+    "tier": "bronze",
+    "components": {
+      "quality": 50.0,
+      "documentation": 54.17,
+      "ownership": 58.33,
+      "freshness": 0.0
+    },
+    "datasets": 12,
+    "weakest": "freshness"
+  },
+  {
+    "team": "Marketing",
+    "score": 40.04,
+    "tier": "bronze",
+    "components": {
+      "quality": 25.0,
+      "documentation": 53.12,
+      "ownership": 50.0
+    },
+    "datasets": 8,
+    "weakest": "quality"
+  }
+]

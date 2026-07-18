@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Data Platform Team",
+    "trust_score": 81.57,
+    "trust_tier": "gold"
+  },
+  {
+    "name": "Ecommerce Operations",
+    "trust_score": 70.31,
+    "trust_tier": "silver"
+  },
+  {
+    "name": "Engineering Division",
+    "trust_score": 51.17,
+    "trust_tier": "bronze"
+  },
+  {
+    "name": "E-Commerce",
+    "trust_score": 42.71,
+    "trust_tier": "bronze"
+  },
+  {
+    "name": "Marketing",
+    "trust_score": 40.04,
+    "trust_tier": "bronze"
+  }
+]

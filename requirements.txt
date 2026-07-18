@@ -1,0 +1,37 @@
+# TrustBoard - dependencias Python. Requiere Python 3.11+ (lo exige mcp-server-datahub).
+
+# --- DataHub ---
+# SDK oficial: DataHubGraph para leer aspectos y ejecutar GraphQL (assertions,
+# structured properties sobre dominios). Version fijada por datahub-agent-context,
+# que depende de acryl-datahub==1.6.0.6 exacto.
+acryl-datahub==1.6.0.6
+# Agent Context Kit: expone las tools de DataHub como herramientas LangChain.
+datahub-agent-context[langchain]==1.6.0.15
+# Nota: mcp-server-datahub NO se instala aqui; se ejecuta con `uvx
+# mcp-server-datahub@latest` para exploracion interactiva y trae su propio pin
+# de acryl-datahub que chocaria con el del Agent Context Kit.
+
+# --- Agentes / LLM ---
+# langchain lo fija datahub-agent-context (requiere >=1.0,<2.0); no se pinnea
+# aqui para no chocar. langchain-anthropic y anthropic quedan sin pin para que
+# pip resuelva versiones compatibles con langchain 1.x.
+langchain>=1.0,<2.0
+langchain-anthropic
+anthropic
+
+# --- Backend ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# --- Utilidades ---
+python-dotenv==1.0.1
+httpx==0.28.1
+requests==2.32.3
+
+# --- Tests ---
+pytest==8.3.4
+pytest-cov==6.0.0
