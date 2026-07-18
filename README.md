@@ -159,12 +159,19 @@ trustboard/
 
 ## Open source contributions
 
-- A reusable `trust-score` DataHub Skill contributed to
-  [datahub-project/datahub-skills](https://github.com/datahub-project/datahub-skills)
-  (see `datahub-skill-contribution/`).
-- A one-line fix to the DataHub CLI for a real Windows bug: drive-letter paths (`C:\...`) were parsed
-  as URI schemes in `get_path_schema`, breaking `datapack load` on Windows. The workaround ships in
-  `scripts/load_datapack.py` and is proposed upstream with a regression test.
+Both contributions are open upstream:
+
+- **[datahub-skills#39](https://github.com/datahub-project/datahub-skills/pull/39)** —
+  a `datahub-trust-score` skill that generalizes this project's pattern: compose signals
+  into a score per domain, write it back as structured properties and tier tags, and raise
+  incidents on the assets dragging a domain down. It complements the existing
+  `datahub-quality` skill rather than duplicating it.
+- **[datahub#18479](https://github.com/datahub-project/datahub/pull/18479)** — a fix for a
+  real Windows bug in the DataHub CLI. `get_path_schema()` parsed the drive letter of
+  `C:\dataile.json` as a URI scheme, so any local ingestion on Windows failed with
+  `KeyError: Did not find a registered class for c`. Shipped with a regression test.
+  The workaround lives in `scripts/load_datapack.py`, which is how this project could load
+  its own demo data.
 
 ## Pre-existing code
 
