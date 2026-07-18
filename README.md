@@ -3,6 +3,8 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org)
 
+**Live demo: https://trustboard.duckdns.org**
+
 **TrustBoard turns data governance into a weekly sport.** A multi-agent system reads quality
 signals from DataHub, computes a Trust Score for every data team, writes it back to the graph as
 first-class metadata, opens incidents on the datasets that drag a team down, and posts a gamified
