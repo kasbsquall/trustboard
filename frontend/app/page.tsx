@@ -1,8 +1,34 @@
 import Link from "next/link";
-import { TrendDown, TrendUp } from "@phosphor-icons/react/dist/ssr";
+import {
+  BookOpen,
+  ClockCounterClockwise,
+  Crown,
+  Megaphone,
+  MagnifyingGlass,
+  PencilSimpleLine,
+  SealCheck,
+  ShieldCheck,
+  TrendDown,
+  TrendUp,
+  UserCircle,
+} from "@phosphor-icons/react/dist/ssr";
 import { Logo } from "@/components/Logo";
 import { Sparkline } from "@/components/Sparkline";
 import { getLeaderboard, tierOf, type Team } from "@/lib/api";
+
+const SCORE_PARTS = [
+  { Icon: SealCheck, weight: "35%", label: "Quality, from passing data tests" },
+  { Icon: BookOpen, weight: "25%", label: "Documentation and glossary coverage" },
+  { Icon: UserCircle, weight: "20%", label: "Ownership" },
+  { Icon: ClockCounterClockwise, weight: "20%", label: "Lineage freshness" },
+];
+
+const CYCLE = [
+  { Icon: MagnifyingGlass, name: "Auditor", text: "Reads quality, docs, ownership and lineage from DataHub." },
+  { Icon: PencilSimpleLine, name: "Scribe", text: "Writes the score back as a structured property, tags each dataset and opens incidents." },
+  { Icon: Megaphone, name: "Herald", text: "Posts these standings to Slack every week." },
+  { Icon: ShieldCheck, name: "Gatekeeper", text: "A separate agent asks DataHub if a dataset is trustworthy before using it." },
+];
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +91,10 @@ export default async function Home() {
 
       <section className={`headline tier-${leaderTier}`} aria-label="Team of the week">
         <div>
-          <div className="headline__label">Team of the week</div>
+          <div className="headline__label">
+            <Crown size={13} weight="light" />
+            Team of the week
+          </div>
           <div className="headline__team">{leader.domain_name}</div>
           <p className="headline__sub">
             Leads on {leader.assertions_passing_pct != null ? `${Math.round(leader.assertions_passing_pct)}% passing checks` : "quality checks"} across{" "}
@@ -99,6 +128,7 @@ export default async function Home() {
               key={team.domain_name}
               href={`/domain/${encodeURIComponent(team.domain_name)}`}
               className={`row tier-${tier}`}
+              style={{ "--i": Math.min(i, 7) } as React.CSSProperties}
             >
               <div className="row__rank tnum">{ORDINAL[i + 1] ?? `${i + 2}th`}</div>
               <div>
@@ -130,25 +160,28 @@ export default async function Home() {
       <footer className="colophon">
         <div>
           <h2>How the score works</h2>
-          <dl>
-            <dt>35%</dt>
-            <dd>Quality, from passing data tests</dd>
-            <dt>25%</dt>
-            <dd>Documentation and glossary coverage</dd>
-            <dt>20%</dt>
-            <dd>Ownership</dd>
-            <dt>20%</dt>
-            <dd>Lineage freshness</dd>
-          </dl>
+          <ul className="legend">
+            {SCORE_PARTS.map(({ Icon, weight, label }) => (
+              <li key={label}>
+                <Icon size={16} weight="light" />
+                <span className="legend__weight tnum">{weight}</span>
+                <span>{label}</span>
+              </li>
+            ))}
+          </ul>
         </div>
         <div>
-          <h2>What happens after scoring</h2>
-          <p>
-            The Auditor reads the signals from DataHub. The Scribe writes each score back to the
-            graph as a structured property, tags every dataset with its trust tier, and opens an
-            incident on the assets dragging a team down. The Herald posts these standings to Slack.
-            A separate agent can then ask DataHub whether a dataset is trustworthy before using it.
-          </p>
+          <h2>The weekly cycle</h2>
+          <ul className="legend legend--cycle">
+            {CYCLE.map(({ Icon, name, text }) => (
+              <li key={name}>
+                <Icon size={16} weight="light" />
+                <span>
+                  <b>{name}</b> {text}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </footer>
     </main>

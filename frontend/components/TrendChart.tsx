@@ -68,7 +68,16 @@ export function TrendChart({ points }: { points: HistoryPoint[] }) {
       ))}
 
       <path d={area} fill="url(#trend-fill)" />
-      <path d={line} fill="none" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        className="trend-line"
+        d={line}
+        fill="none"
+        stroke={stroke}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ ["--len" as string]: innerW * 1.4 }}
+      />
 
       {points.map((p, i) => {
         const isLast = i === points.length - 1;

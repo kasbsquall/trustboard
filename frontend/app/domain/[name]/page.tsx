@@ -2,15 +2,21 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft } from "@phosphor-icons/react";
+import {
+  ArrowLeft,
+  BookOpen,
+  ClockCounterClockwise,
+  ListNumbers,
+  SealCheck,
+} from "@phosphor-icons/react";
 import NumberFlow from "@number-flow/react";
 import { TrendChart } from "@/components/TrendChart";
 import { getHistory, getLeaderboard, tierOf, type HistoryPoint, type Team } from "@/lib/api";
 
 const SIGNALS = [
-  { key: "assertions_passing_pct", label: "Quality", weight: "35%" },
-  { key: "documentation_score", label: "Documentation", weight: "25%" },
-  { key: "freshness_score", label: "Freshness", weight: "20%" },
+  { key: "assertions_passing_pct", label: "Quality", weight: "35%", Icon: SealCheck },
+  { key: "documentation_score", label: "Documentation", weight: "25%", Icon: BookOpen },
+  { key: "freshness_score", label: "Freshness", weight: "20%", Icon: ClockCounterClockwise },
 ] as const;
 
 export default function DomainDetail({ params }: { params: { name: string } }) {
@@ -64,10 +70,11 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
       </header>
 
       <section className="signals" aria-label="Score components">
-        {SIGNALS.map((s) => {
+        {SIGNALS.map((s, i) => {
           const value = team ? (team[s.key] as number | null) : null;
           return (
             <div className="signal-cell" key={s.key}>
+              <s.Icon size={15} weight="light" className="signal-cell__icon" />
               <div className="signal-cell__value tnum">
                 {value != null ? Math.round(value) : "—"}
               </div>
@@ -75,12 +82,18 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
                 {s.label} · {s.weight}
               </div>
               <div className="signal-cell__bar">
-                <i style={{ transform: `scaleX(${value != null ? value / 100 : 0})` }} />
+                <i
+                  style={{
+                    transform: `scaleX(${value != null ? value / 100 : 0})`,
+                    transitionDelay: `${120 + i * 70}ms`,
+                  }}
+                />
               </div>
             </div>
           );
         })}
         <div className="signal-cell">
+          <ListNumbers size={15} weight="light" className="signal-cell__icon" />
           <div className="signal-cell__value tnum">{team?.rank_this_week ?? "—"}</div>
           <div className="signal-cell__label">League position</div>
           <div className="signal-cell__bar">

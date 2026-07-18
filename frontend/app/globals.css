@@ -149,7 +149,7 @@ a {
 .masthead__mark {
   display: flex;
   align-items: center;
-  gap: var(--ma-sm);
+  gap: 7px; /* mitad del intervalo previo: el isotipo y el logotipo leen como una unidad */
   margin-bottom: var(--ma-sm);
 }
 
@@ -397,13 +397,44 @@ a {
 
 .colophon p { text-wrap: pretty; }
 
-.colophon dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--ma-2xs) var(--ma-sm);
+.legend {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ma-xs);
 }
 
-.colophon dt { color: var(--text-muted); font-weight: 500; }
+.legend li {
+  display: grid;
+  grid-template-columns: 16px auto 1fr;
+  align-items: baseline;
+  gap: var(--ma-xs);
+}
+
+.legend svg {
+  align-self: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.legend__weight {
+  color: var(--text-muted);
+  font-weight: 600;
+  min-width: 2.4rem;
+}
+
+.legend--cycle li { grid-template-columns: 16px 1fr; }
+
+.legend--cycle b {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.headline__label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
 
 /* ============================================================
    Detail view
@@ -463,6 +494,12 @@ a {
   padding: var(--ma-md) var(--ma-sm);
 }
 
+.signal-cell__icon {
+  color: var(--text-faint);
+  margin-bottom: var(--ma-xs);
+  display: block;
+}
+
 .signal-cell__value {
   font-family: var(--font-display);
   font-size: var(--step-4);
@@ -492,8 +529,11 @@ a {
 .signal-cell__bar i {
   position: absolute;
   inset: 0 auto 0 0;
+  width: 100%;
   background: var(--signal-dim);
   transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 280ms var(--ease-out-quint);
 }
 
 .chart-panel {
@@ -536,6 +576,47 @@ a {
   .tier-tag { grid-column: 2 / -1; justify-self: start; }
   .signals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .colophon { grid-template-columns: 1fr; gap: var(--ma-md); }
+}
+
+/* ============================================================
+   Motion: entrance choreography.
+   Rows stagger in at 30ms intervals, capped at 8 so the list never
+   feels slow. Only transform and opacity animate.
+   ============================================================ */
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes draw {
+  from { stroke-dashoffset: var(--len, 300); }
+  to { stroke-dashoffset: 0; }
+}
+
+.headline,
+.standings,
+.colophon,
+.detail__head,
+.signals,
+.chart-panel {
+  animation: rise 260ms var(--ease-out-quint) backwards;
+}
+
+.standings { animation-delay: 60ms; }
+.colophon { animation-delay: 120ms; }
+.signals { animation-delay: 60ms; }
+.chart-panel { animation-delay: 120ms; }
+
+.row {
+  animation: rise 240ms var(--ease-out-quint) backwards;
+  animation-delay: calc(90ms + var(--i, 0) * 30ms);
+}
+
+/* The trend line draws itself once, so the shape of the season registers. */
+.trend-line {
+  stroke-dasharray: var(--len, 900);
+  animation: draw 620ms var(--ease-out-quint) 160ms backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

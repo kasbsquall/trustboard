@@ -1,7 +1,7 @@
 /**
- * TrustBoard mark: a governance shield whose interior is a three-step podium.
- * The three bars carry the tier materials (gold, silver, bronze), so the mark
- * speaks the same language as the standings table.
+ * TrustBoard mark: three lineage nodes climbing inside the corner brackets of a
+ * ledger. The top node is solid gold, the team leading the league. Reads as
+ * DataHub's graph and as a standings table at the same time.
  */
 export function Logo({ size = 30 }: { size?: number }) {
   return (
@@ -14,15 +14,16 @@ export function Logo({ size = 30 }: { size?: number }) {
       aria-label="TrustBoard"
     >
       <path
-        d="M24 4 L41 10 V24.5 C41 34 33.5 41.5 24 44.5 C14.5 41.5 7 34 7 24.5 V10 Z"
+        d="M7 15 V7 H15 M33 7 H41 V15 M41 33 V41 H33 M15 41 H7 V33"
         stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-        opacity="0.85"
+        strokeWidth="1.5"
+        strokeLinecap="square"
+        opacity="0.45"
       />
-      <rect x="14.5" y="27" width="5" height="8.5" rx="0.5" fill="var(--tier-bronze)" />
-      <rect x="21.5" y="21" width="5" height="14.5" rx="0.5" fill="var(--tier-gold)" />
-      <rect x="28.5" y="24.5" width="5" height="11" rx="0.5" fill="var(--tier-silver)" />
+      <path d="M15 32 L23.5 25.5 L32.5 16" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="15" cy="32" r="2.5" fill="var(--bg)" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="23.5" cy="25.5" r="2.5" fill="var(--bg)" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="32.5" cy="16" r="3.4" fill="var(--tier-gold)" />
     </svg>
   );
 }
