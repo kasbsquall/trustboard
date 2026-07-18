@@ -3,7 +3,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org)
 
-**Live demo: https://trustboard.duckdns.org**
+**Live demo: https://trustboard.duckdns.org** (a saved snapshot of a real run, see below)
 
 **TrustBoard turns data governance into a weekly sport.** A multi-agent system reads quality
 signals from DataHub, computes a Trust Score for every data team, writes it back to the graph as
@@ -35,8 +35,9 @@ Three specialized agents, plus a fourth that proves the point:
 3. **The Herald** builds the weekly ranking against last week and posts it to Slack as a sports
    scoreboard: podium, tiers, "team of the week", and the "most improved" comeback story.
 4. **The Gatekeeper** is a *separate* agent that consults the Trust Score before using a dataset. A
-   gold dataset gets a GO; an at-risk dataset gets a NO-GO with a safer alternative. It never
-   integrates with TrustBoard, it just reads DataHub. This closes the loop: agent to graph to agent.
+   gold dataset gets a GO; an at-risk dataset gets a NO-GO with a safer alternative. It shares no
+   state, database or run with TrustBoard: it discovers the score by querying DataHub, the same way
+   a third-party agent would. This closes the loop: agent to graph to agent.
 
 A web dashboard (FastAPI + Next.js) shows the current league and each team's trend over time.
 
@@ -75,7 +76,7 @@ it can be packaged as a reusable DataHub Skill.
 
 ```
 DataHub (GMS :8080)
-     | reads tests, docs, ownership, lineage           writes property, tags, incident
+     | reads tests, docs, ownership, recency             writes property, tags, incident
      v                                                          ^
   Auditor  --scores-->  local history (SQLite)  ------------>  Scribe  -->  DataHub
                               |                                               |
@@ -97,7 +98,9 @@ Requires Docker (8 GB for DataHub), Python 3.11+, and Node 20+.
 pip install --upgrade acryl-datahub
 datahub docker quickstart
 datahub init                              # user datahub / password datahub
-python scripts/load_datapack.py showcase-ecommerce --force   # Windows-safe datapack loader
+datahub datapack load showcase-ecommerce --force
+# On Windows that command fails (see upstream issue below); use this instead:
+# python scripts/load_datapack.py showcase-ecommerce --force
 ```
 
 DataHub UI at http://localhost:9002 (login `datahub` / `datahub`). Generate a personal access token
@@ -107,13 +110,30 @@ in Settings > Access Tokens (enable token auth first if the quickstart ships it 
 
 ```bash
 cp .env.example .env          # paste your DATAHUB_GMS_TOKEN and SLACK_WEBHOOK_URL
-python -m venv .venv && .venv/Scripts/activate   # Windows; use source .venv/bin/activate elsewhere
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-python scripts/seed_demo.py       # prepares the demo scenario (assigns datasets, seeds signals)
+python scripts/seed_demo.py       # prepares the demo scenario (see the note below)
 python scripts/seed_history.py    # seeds a few weeks of history for the trend charts
 python run_week.py                # runs the full weekly cycle: audit, write-back, snapshot, publish
 ```
+
+### Where the demo numbers come from
+
+Be clear about this before reading the leaderboard. DataHub's showcase datapack ships with no
+quality signals attached, so there would be nothing to score. `scripts/seed_demo.py` writes them:
+it assigns datasets to domains and emits ownership, descriptions, glossary terms, a `lastModified`
+timestamp and synthetic `testResults` following a health profile per team. That profile is what
+produces the spread between a gold team and an at-risk one, and `scripts/seed_history.py` does the
+same for the previous weeks behind the trend charts.
+
+So the *inputs* are fabricated. What runs on top of them is not: the Auditor reads those aspects
+back through the SDK with no knowledge of the seeder, the scoring is the real model, and the Scribe
+writes the results into DataHub as metadata you can open in the UI. Point TrustBoard at an instance
+with real assertions and the same pipeline scores it unchanged.
+
+The hosted demo at trustboard.duckdns.org serves a saved snapshot of one of these runs. It is not
+connected to a live DataHub instance.
 
 ### 3. Dashboard
 
@@ -136,7 +156,7 @@ trustboard/
 ├── agents/            auditor, scribe, incidents, herald, gatekeeper, trust_lookup
 ├── scoring/           pure Trust Score logic
 ├── tests/             unit tests for the scoring model
-├── mcp_client/        authenticated DataHub connection (SDK + Agent Context Kit)
+├── mcp_client/        authenticated DataHub connection (SDK, retry with backoff)
 ├── mcp_server/        FastMCP server exposing get_trust_score to other agents
 ├── backend/           FastAPI + SQLite history
 ├── frontend/          Next.js dashboard

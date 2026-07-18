@@ -12,7 +12,7 @@ DataHub and reports OK/FAIL for each one, to settle the architecture:
 It leaves no meaningful garbage behind: it uses an idempotent test property/tag.
 
 Usage:
-    .venv/Scripts/python scripts/probe_writeback.py
+    python scripts/probe_writeback.py
 """
 from __future__ import annotations
 

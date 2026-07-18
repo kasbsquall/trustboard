@@ -18,15 +18,17 @@ import { getLeaderboard, ordinal, tierOf, type Team } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
+// One canonical name per component, matching the team detail page. The long
+// phrase is the description, not a second name for the same figure.
 const SCORE_PARTS = [
-  { Icon: SealCheck, weight: "35%", label: "Data tests passing" },
-  { Icon: BookOpen, weight: "25%", label: "Documentation and glossary coverage" },
-  { Icon: UserCircle, weight: "20%", label: "Datasets with an assigned owner" },
-  { Icon: ClockCounterClockwise, weight: "20%", label: "Lineage and update recency" },
+  { Icon: SealCheck, weight: "35%", name: "Quality", label: "data tests passing" },
+  { Icon: BookOpen, weight: "25%", name: "Documentation", label: "descriptions and glossary coverage" },
+  { Icon: UserCircle, weight: "20%", name: "Ownership", label: "datasets with an assigned owner" },
+  { Icon: ClockCounterClockwise, weight: "20%", name: "Freshness", label: "how recently datasets were updated" },
 ];
 
 const AGENTS = [
-  { Icon: MagnifyingGlass, name: "Auditor", text: "Reads quality, docs, ownership and lineage from DataHub." },
+  { Icon: MagnifyingGlass, name: "Auditor", text: "Reads quality, docs, ownership and update recency from DataHub." },
   { Icon: PencilSimpleLine, name: "Scribe", text: "Writes the score back as a structured property, tags every dataset, and opens incidents on the ones dragging the team down." },
   { Icon: Megaphone, name: "Herald", text: "Posts these standings to Slack every week." },
   { Icon: ShieldCheck, name: "Gatekeeper", text: "A separate agent that asks DataHub whether a dataset is trustworthy before building on it." },
@@ -45,8 +47,8 @@ function deltaOf(team: Team) {
 
 function weakestOf(team: Team) {
   const parts = [
-    ["tests", team.assertions_passing_pct],
-    ["docs", team.documentation_score],
+    ["quality", team.assertions_passing_pct],
+    ["documentation", team.documentation_score],
     ["ownership", team.ownership_score],
     ["freshness", team.freshness_score],
   ].filter(([, v]) => v != null) as [string, number][];
@@ -135,7 +137,7 @@ export default async function Home() {
           <span>Team</span>
           <span>Trend</span>
           <span>Score</span>
-          <span>Change</span>
+          <span>Change (points)</span>
           <span>Tier</span>
         </div>
 
@@ -149,7 +151,7 @@ export default async function Home() {
               href={`/domain/${encodeURIComponent(team.domain_name)}`}
               className={`row tier-${tier}`}
               style={{ "--i": Math.min(i, 7) } as React.CSSProperties}
-              aria-label={`${ordinal(position)}, ${team.domain_name}, trust score ${team.trust_score.toFixed(1)}, ${delta.dir}${delta.label}, ${tier.replace("-", " ")} tier`}
+              aria-label={`${ordinal(position)}, ${team.domain_name}, trust score ${team.trust_score.toFixed(1)}, ${delta.dir}${delta.label} points, ${tier.replace("-", " ")} tier`}
             >
               <div className="row__rank tnum">{ordinal(position)}</div>
               <div>
@@ -178,11 +180,13 @@ export default async function Home() {
         <div>
           <h2>How the score works</h2>
           <ul className="legend">
-            {SCORE_PARTS.map(({ Icon, weight, label }) => (
-              <li key={label}>
+            {SCORE_PARTS.map(({ Icon, weight, name, label }) => (
+              <li key={name}>
                 <Icon size={15} weight="light" aria-hidden="true" />
                 <span className="legend__weight tnum">{weight}</span>
-                <span>{label}</span>
+                <span>
+                  <b>{name}</b> {label}
+                </span>
               </li>
             ))}
           </ul>

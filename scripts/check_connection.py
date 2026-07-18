@@ -7,7 +7,7 @@ Checks end to end that the SDK can:
   - read a dataset's testResults aspect (the quality signal of the score).
 
 Usage:
-    .venv/Scripts/python scripts/check_connection.py
+    python scripts/check_connection.py
 """
 from __future__ import annotations
 

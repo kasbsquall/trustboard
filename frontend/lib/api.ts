@@ -32,10 +32,16 @@ export async function getLeaderboard(): Promise<LeaderboardResponse> {
   return res.json();
 }
 
-export async function getHistory(domain: string): Promise<HistoryPoint[]> {
+/**
+ * Returns null when the domain is not scored, and throws when the API itself
+ * fails. The caller needs to tell those apart: "this team does not exist" and
+ * "the backend is down" are different messages for the reader.
+ */
+export async function getHistory(domain: string): Promise<HistoryPoint[] | null> {
   const res = await fetch(`${API}/api/domains/${encodeURIComponent(domain)}/history`, {
     cache: "no-store",
   });
+  if (res.status === 404) return null;
   if (!res.ok) throw new Error("Failed to load history");
   const data = await res.json();
   return data.history;

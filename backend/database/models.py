@@ -7,7 +7,7 @@ two engines.
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from sqlalchemy import Boolean, Date, DateTime, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -38,7 +38,7 @@ class DomainScore(Base):
     rank_last_week: Mapped[int | None] = mapped_column(Integer)
     written_to_datahub: Mapped[bool] = mapped_column(Boolean, default=False)
     datahub_property_urn: Mapped[str | None] = mapped_column(String(300))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class LeaderboardPost(Base):
@@ -49,4 +49,4 @@ class LeaderboardPost(Base):
     slack_message_ts: Mapped[str | None] = mapped_column(String(100))
     top_domain: Mapped[str | None] = mapped_column(String(200))
     most_improved_domain: Mapped[str | None] = mapped_column(String(200))
-    posted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    posted_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

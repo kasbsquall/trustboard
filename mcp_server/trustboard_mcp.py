@@ -7,13 +7,16 @@ inherits the knowledge" loop: an agent asks whether a dataset is trustworthy
 without even knowing that TrustBoard exists.
 
 Run (stdio):
-    .venv/Scripts/python -m mcp_server.trustboard_mcp
+    python -m mcp_server.trustboard_mcp
 
 Register in an MCP client (for example Claude Code):
     claude mcp add trustboard -- <python> -m mcp_server.trustboard_mcp
-"""
-from __future__ import annotations
 
+Note: this module deliberately does NOT use `from __future__ import
+annotations`. FastMCP inspects the real annotation objects when it registers a
+tool, and postponed evaluation would hand it plain strings, which fails with
+"issubclass() arg 1 must be a class".
+"""
 from mcp.server.fastmcp import FastMCP
 
 from agents import trust_lookup

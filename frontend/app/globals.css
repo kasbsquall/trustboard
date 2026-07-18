@@ -219,7 +219,8 @@ a {
   transition: background var(--dur-micro) var(--ease-out-quint);
 }
 
-.headline:hover { background: linear-gradient(180deg, color-mix(in oklch, var(--tier-gold) 9%, transparent), transparent 78%); }
+.headline:hover,
+.headline:focus-visible { background: linear-gradient(180deg, color-mix(in oklch, var(--tier-gold) 9%, transparent), transparent 78%); }
 .headline:active { transform: scale(0.998); }
 
 .headline__label {
@@ -517,7 +518,8 @@ a {
   transition: color var(--dur-micro) var(--ease-out-quint);
 }
 
-.back:hover { color: var(--text); }
+.back:hover,
+.back:focus-visible { color: var(--text); }
 
 .detail__head {
   display: grid;
@@ -705,11 +707,11 @@ a {
    Detail extras: next-tier target, inline links, pager
    ============================================================ */
 
+/* Distinguished by mass and a rule above it, not by a coloured left border. */
 .next-tier {
   margin-top: var(--ma-md);
-  padding: var(--ma-xs) var(--ma-sm);
-  border-left: 2px solid var(--signal-dim);
-  background: color-mix(in oklch, var(--signal) 5%, transparent);
+  padding: var(--ma-sm) 0 var(--ma-xs);
+  border-top: 1px solid var(--surface-line);
   font-size: var(--step--1);
   color: var(--text-muted);
 }
@@ -757,7 +759,8 @@ a {
   transition: color var(--dur-micro) var(--ease-out-quint);
 }
 
-.pager a:hover { color: var(--text); }
+.pager a:hover,
+.pager a:focus-visible { color: var(--text); }
 .pager__next { text-align: right; }
 
 .signals__note {
@@ -771,4 +774,19 @@ a {
 .signal-cell__na {
   color: var(--text-faint);
   opacity: 0.75;
+}
+
+/* The component name carries the weight; the phrase after it is the
+   description, so it stays quieter than the name. */
+.legend li b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* The tier scale is reference, not the message: it sits below the target. */
+.next-tier__scale {
+  display: block;
+  margin-top: var(--ma-2xs);
+  color: var(--text-faint);
+  font-size: var(--step--1);
 }

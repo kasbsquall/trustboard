@@ -50,21 +50,4 @@ def execute_graphql_retry(graph, query: str, variables: dict | None = None, retr
     raise last_err  # type: ignore[misc]
 
 
-def build_agent_tools(include_mutations: bool = False):
-    """LangChain tools from the Agent Context Kit.
-
-    Imported lazily so the rest of the project does not depend on
-    datahub-agent-context when only the SDK is used.
-    """
-    from datahub.sdk.main_client import DataHubClient
-    from datahub_agent_context.langchain_tools import build_langchain_tools
-
-    settings = get_settings()
-    client = DataHubClient(
-        server=settings.datahub_gms_url,
-        token=settings.datahub_gms_token or None,
-    )
-    return build_langchain_tools(client, include_mutations=include_mutations)
-
-
-__all__ = ["get_graph", "build_agent_tools", "execute_graphql_retry", "get_settings"]
+__all__ = ["get_graph", "execute_graphql_retry", "get_settings"]

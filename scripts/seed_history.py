@@ -6,7 +6,7 @@ narrative: Marketing climbing back (most improved), Engineering falling, the
 rest rising gently. It is declared as demo environment preparation.
 
 Usage:
-    .venv/Scripts/python scripts/seed_history.py
+    python scripts/seed_history.py
 """
 from __future__ import annotations
 

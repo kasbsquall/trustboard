@@ -31,11 +31,9 @@ export function TrendChart({ points }: { points: HistoryPoint[] }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      width="100%"
-      height="auto"
       role="img"
       aria-label={`Trust score trend from ${first.trust_score.toFixed(1)} to ${last.trust_score.toFixed(1)}`}
-      style={{ display: "block", overflow: "visible" }}
+      style={{ display: "block", width: "100%", height: "auto", overflow: "visible" }}
     >
       <defs>
         <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">

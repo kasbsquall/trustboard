@@ -8,16 +8,17 @@ script:
   1. Maps each data platform to a team (a named domain).
   2. Reassigns each dataset to its team (domains aspect).
   3. Seeds contrasting signals according to the team's health profile:
-     ownership, documentation (editableDatasetProperties), glossaryTerms and
-     testResults (pass/fail). These are exactly the signals the Auditor will
-     read afterwards to compute the Trust Score.
+     ownership, documentation (editableDatasetProperties), glossaryTerms,
+     an update timestamp (datasetProperties.lastModified) and testResults
+     (pass/fail). These are exactly the four signals the Auditor reads
+     afterwards to compute the Trust Score.
 
 It is idempotent: emitting an aspect replaces the previous one, so it can be
 re-run without duplicating. It is declared as demo environment preparation,
 separate from the logic the Auditor audits.
 
 Usage:
-    .venv/Scripts/python scripts/seed_demo.py
+    python scripts/seed_demo.py
 """
 from __future__ import annotations
 
@@ -31,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from datahub.emitter.mcp import MetadataChangeProposalWrapper  # noqa: E402
 from datahub.metadata.schema_classes import (  # noqa: E402
     AuditStampClass,
+    DatasetPropertiesClass,
     DomainsClass,
     EditableDatasetPropertiesClass,
     GlossaryTermAssociationClass,
@@ -70,12 +72,19 @@ PLATFORM_TO_TEAM = {
 # Health profile per team: target fraction for each signal. This creates the
 # contrast that makes the leaderboard interesting.
 PROFILES = {
-    "Data Platform Team": dict(doc=0.90, own=0.90, terms=0.80, pass_ratio=0.90),
-    "Ecommerce Operations": dict(doc=0.75, own=0.70, terms=0.60, pass_ratio=0.78),
-    "E-Commerce": dict(doc=0.55, own=0.50, terms=0.40, pass_ratio=0.55),
-    "Engineering Division": dict(doc=0.35, own=0.30, terms=0.25, pass_ratio=0.38),
-    "Marketing": dict(doc=0.15, own=0.15, terms=0.10, pass_ratio=0.22),
+    "Data Platform Team": dict(doc=0.90, own=0.90, terms=0.80, pass_ratio=0.90, fresh=0.85),
+    "Ecommerce Operations": dict(doc=0.75, own=0.70, terms=0.60, pass_ratio=0.78, fresh=0.70),
+    "E-Commerce": dict(doc=0.55, own=0.50, terms=0.40, pass_ratio=0.55, fresh=0.50),
+    "Engineering Division": dict(doc=0.35, own=0.30, terms=0.25, pass_ratio=0.38, fresh=0.30),
+    "Marketing": dict(doc=0.15, own=0.15, terms=0.10, pass_ratio=0.22, fresh=0.15),
 }
+
+# Freshness reads DatasetProperties.lastModified. A dataset inside the team's
+# fresh fraction was updated a few days ago, one outside it months ago, which
+# puts it well past the scoring window.
+_MS_PER_DAY = 86_400_000
+FRESH_AGE_DAYS = 3
+STALE_AGE_DAYS = 75
 
 OWNERS = [
     "urn:li:corpuser:b2fd91.alex@example.com",
@@ -129,9 +138,8 @@ def seed_dataset(graph, dataset_urn: str, team: str, idx: int) -> None:
     which fraction receives each signal, respecting the profile.
     """
     profile = PROFILES[team]
-    emit = lambda aspect: graph.emit_mcp(  # noqa: E731
-        MetadataChangeProposalWrapper(entityUrn=dataset_urn, aspect=aspect)
-    )
+    def emit(aspect) -> None:
+        graph.emit_mcp(MetadataChangeProposalWrapper(entityUrn=dataset_urn, aspect=aspect))
 
     # 1. Domain (team).
     emit(DomainsClass(domains=[DOMAINS[team]]))
@@ -168,7 +176,19 @@ def seed_dataset(graph, dataset_urn: str, team: str, idx: int) -> None:
             )
         )
 
-    # 5. testResults: 4 checks, how many pass depends on pass_ratio.
+    # 5. Freshness. The existing aspect is read back and re-emitted with only
+    # lastModified changed, so the name, description and custom properties that
+    # came with the datapack survive.
+    props = graph.get_aspect(dataset_urn, DatasetPropertiesClass) or DatasetPropertiesClass(
+        customProperties={}
+    )
+    age_days = FRESH_AGE_DAYS if within(profile["fresh"]) else STALE_AGE_DAYS
+    props.lastModified = AuditStampClass(
+        time=_now_ms() - age_days * _MS_PER_DAY, actor=ACTOR
+    )
+    emit(props)
+
+    # 6. testResults: 4 checks, how many pass depends on pass_ratio.
     n_pass = round(profile["pass_ratio"] * len(TEST_CHECKS))
     # Deterministic +-1 jitter so that not every dataset is identical.
     if idx % 3 == 0 and n_pass < len(TEST_CHECKS):

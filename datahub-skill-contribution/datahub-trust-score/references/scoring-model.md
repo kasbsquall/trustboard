@@ -66,7 +66,7 @@ initiatives lose credibility.
 | gold    | 80 to 100 |
 | silver  | 60 to 79  |
 | bronze  | 40 to 59  |
-| at risk | below 40  |
+| at-risk | below 40  |
 
 Publish these thresholds in any interface that shows a tier. A reader who sees "bronze"
 cannot tell whether that means 41 or 59 unless the scale is visible.

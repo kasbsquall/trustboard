@@ -39,8 +39,8 @@ Copilot, Gemini CLI, Windsurf, and others).
 
 - `allowed-tools` in the YAML frontmatter above
 
-**Reference file paths:** Shared references are in `../shared-references/` relative to
-this skill's directory. Skill-specific references are in `references/`.
+**Reference file paths:** references are in `references/`, relative to this
+skill's directory. The skill is self-contained and reads nothing outside it.
 
 ---
 
@@ -94,7 +94,7 @@ missing signal is unknown, not bad. Report coverage alongside the score so the g
 visible.
 
 The domain score is the mean of its dataset scores. Tiers: gold at 80 and above, silver
-at 60, bronze at 40, at risk below 40. Surface these thresholds wherever the tier is
+at 60, bronze at 40, at-risk below 40. Surface these thresholds wherever the tier is
 shown, otherwise the label is meaningless to the reader.
 
 ### 4. Write the score back to the graph
@@ -106,8 +106,8 @@ each domain.
 datahub graphql --query 'mutation { upsertStructuredProperties(input: {
   assetUrn: "urn:li:domain:<id>",
   structuredPropertyInputParams: [
-    {structuredPropertyUrn: "urn:li:structuredProperty:io.datahub.trustScore", values: [{numberValue: 81.6}]},
-    {structuredPropertyUrn: "urn:li:structuredProperty:io.datahub.trustTier", values: [{stringValue: "gold"}]}
+    {structuredPropertyUrn: "urn:li:structuredProperty:trustScore", values: [{numberValue: 81.6}]},
+    {structuredPropertyUrn: "urn:li:structuredProperty:trustTier", values: [{stringValue: "gold"}]}
   ]}) { properties { structuredProperty { urn } } } }'
 ```
 

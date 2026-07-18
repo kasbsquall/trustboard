@@ -14,16 +14,16 @@ node_modules/
 out/
 frontend/.env*.local
 
-# Entorno y secretos
+# Environment and secrets
 .env
 .env.*
 !.env.example
 
-# Base de datos local
+# Local database
 *.db
 *.sqlite3
 
-# SO / editor
+# OS / editor
 .DS_Store
 Thumbs.db
 .vscode/
