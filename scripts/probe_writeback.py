@@ -1,17 +1,17 @@
-"""Verifica en runtime que capacidades de write-back funcionan en el quickstart.
+"""Verifies at runtime which write-back capabilities work on the quickstart.
 
-El panel de jueces marco 3 caveats a confirmar el dia 1 antes de construir el
-agente remediador (Escriba). Este probe los prueba de forma aislada contra el
-DataHub local y reporta OK/FALLA por cada uno, para decidir la arquitectura:
+The judging panel flagged 3 caveats to confirm on day 1 before building the
+remediation agent (Scribe). This probe tests them in isolation against the local
+DataHub and reports OK/FAIL for each one, to settle the architecture:
 
-  1. structured property a nivel DOMAIN (no documentado; plan B: dataset).
+  1. DOMAIN-level structured property (undocumented; plan B: dataset).
   2. custom EXTERNAL assertion + report result (OSS vs Cloud).
   3. incident raise (raiseIncident).
-  4. tag programatico.
+  4. programmatic tag.
 
-No deja basura relevante: usa una property/tag de prueba idempotentes.
+It leaves no meaningful garbage behind: it uses an idempotent test property/tag.
 
-Uso:
+Usage:
     .venv/Scripts/python scripts/probe_writeback.py
 """
 from __future__ import annotations
@@ -42,7 +42,7 @@ def _ok(label: str) -> None:
 
 
 def _fail(label: str, err: Exception) -> None:
-    print(f"  [FALLA] {label}: {type(err).__name__}: {str(err)[:200]}")
+    print(f"  [FAIL]  {label}: {type(err).__name__}: {str(err)[:200]}")
 
 
 def define_property(graph) -> bool:
@@ -59,15 +59,15 @@ def define_property(graph) -> bool:
             description="TrustBoard weekly trust score (0-100).",
         )
         graph.emit_mcp(MetadataChangeProposalWrapper(entityUrn=PROP_URN, aspect=definition))
-        _ok("definir structured property con entityTypes [dataset, domain]")
+        _ok("define structured property with entityTypes [dataset, domain]")
         return True
     except Exception as e:  # noqa: BLE001
-        _fail("definir structured property", e)
+        _fail("define structured property", e)
         return False
 
 
 def assign_property(graph, asset_urn: str, label: str) -> None:
-    """Asigna la property via mutation GraphQL upsertStructuredProperties."""
+    """Assigns the property through the upsertStructuredProperties GraphQL mutation."""
     mutation = """
     mutation up($urn: String!, $prop: String!, $val: Float!) {
       upsertStructuredProperties(input: {
@@ -79,9 +79,9 @@ def assign_property(graph, asset_urn: str, label: str) -> None:
     try:
         res = graph.execute_graphql(mutation, variables={"urn": asset_urn, "prop": PROP_URN, "val": 82.0})
         props = res["upsertStructuredProperties"]["properties"]
-        _ok(f"asignar structured property a {label} (valor leido: {props[0]['values'][0]['numberValue']})")
+        _ok(f"assign structured property to {label} (value read back: {props[0]['values'][0]['numberValue']})")
     except Exception as e:  # noqa: BLE001
-        _fail(f"asignar structured property a {label}", e)
+        _fail(f"assign structured property to {label}", e)
 
 
 def probe_assertion(graph, dataset_urn: str) -> None:
@@ -95,7 +95,7 @@ def probe_assertion(graph, dataset_urn: str) -> None:
         )
         assertion_urn = res.get("urn") if isinstance(res, dict) else None
         if not assertion_urn:
-            raise RuntimeError(f"sin urn en respuesta: {res}")
+            raise RuntimeError(f"no urn in response: {res}")
         graph.report_assertion_result(
             urn=assertion_urn,
             timestamp_millis=int(time.time() * 1000),
@@ -140,15 +140,15 @@ def probe_tag(graph, dataset_urn: str) -> None:
 def main() -> None:
     graph = get_graph()
     dataset_urn = _first_dataset(graph)
-    print(f"Dataset de prueba: {dataset_urn[:70]}...\n")
+    print(f"Test dataset: {dataset_urn[:70]}...\n")
 
     print("1. Structured property:")
     if define_property(graph):
-        time.sleep(2)  # dar tiempo a que la definicion se registre
+        time.sleep(2)  # give the definition time to register
         assign_property(graph, dataset_urn, "DATASET")
         assign_property(graph, DOMAIN_URN, "DOMAIN")
 
-    print("\n2. Custom assertion (historia nativa):")
+    print("\n2. Custom assertion (native history):")
     probe_assertion(graph, dataset_urn)
 
     print("\n3. Incident:")
@@ -157,7 +157,7 @@ def main() -> None:
     print("\n4. Tag:")
     probe_tag(graph, dataset_urn)
 
-    print("\nProbe terminado. Lo marcado [OK] es seguro para el Escriba.")
+    print("\nProbe finished. Anything marked [OK] is safe for the Scribe.")
 
 
 if __name__ == "__main__":

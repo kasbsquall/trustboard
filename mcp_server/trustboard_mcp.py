@@ -1,15 +1,15 @@
-"""Servidor MCP de TrustBoard: expone el Trust Score al ecosistema de agentes.
+"""TrustBoard MCP server: exposes the Trust Score to the agent ecosystem.
 
-Este es el ANGULO KILLER del proyecto. TrustBoard no deja el score en una base
-de datos privada: lo escribe al grafo de DataHub Y lo expone como herramientas
-MCP que CUALQUIER otro agente puede consumir antes de actuar. Cierra el loop
-"el proximo agente hereda el conocimiento": un agente pregunta si un dataset es
-confiable, sin saber siquiera que TrustBoard existe.
+This is the KILLER ANGLE of the project. TrustBoard keeps the score out of a
+private database: it writes it to the DataHub graph AND exposes it as MCP tools
+that ANY other agent can consume before acting. This closes the "the next agent
+inherits the knowledge" loop: an agent asks whether a dataset is trustworthy
+without even knowing that TrustBoard exists.
 
-Ejecutar (stdio):
+Run (stdio):
     .venv/Scripts/python -m mcp_server.trustboard_mcp
 
-Registrar en un cliente MCP (p.ej. Claude Code):
+Register in an MCP client (for example Claude Code):
     claude mcp add trustboard -- <python> -m mcp_server.trustboard_mcp
 """
 from __future__ import annotations

@@ -1,14 +1,14 @@
-"""Segundo agente: el Gatekeeper (demo del angulo killer).
+"""Second agent: the Gatekeeper (demo of the killer angle).
 
-Representa a "el proximo agente" del ecosistema: antes de usar un dataset para
-una tarea (construir un dashboard, entrenar un modelo, correr una query),
-consulta el Trust Score que TrustBoard escribio al grafo y decide GO/NO-GO. Si
-el dataset no es confiable, se niega a usarlo y propone una alternativa de un
-equipo mejor rankeado.
+Stands in for "the next agent" in the ecosystem: before using a dataset for a
+task (building a dashboard, training a model, running a query), it reads the
+Trust Score that TrustBoard wrote to the graph and decides GO/NO-GO. If the
+dataset is not trustworthy, it refuses to use it and proposes an alternative
+from a higher-ranked team.
 
-Esto cierra el loop: el Auditor calcula, el Escriba escribe al grafo, y un
-agente COMPLETAMENTE DISTINTO hereda ese conocimiento sin integrarse con
-TrustBoard, solo consultando DataHub (via el MCP tool o esta libreria).
+This closes the loop: the Auditor computes, the Scribe writes to the graph, and
+a COMPLETELY DIFFERENT agent inherits that knowledge without integrating with
+TrustBoard, just by querying DataHub (through the MCP tool or this library).
 
 Demo:
     .venv/Scripts/python -m agents.gatekeeper
@@ -31,7 +31,7 @@ class Decision:
 
 
 def evaluate(dataset_urn: str, task: str, min_tier: str = "silver", graph=None) -> Decision:
-    """Decide si un agente puede usar un dataset segun su Trust Score."""
+    """Decides whether an agent may use a dataset based on its Trust Score."""
     graph = graph or get_graph()
     verdict = trust_lookup.is_trustworthy(dataset_urn, min_tier=min_tier, graph=graph)
 
@@ -47,7 +47,7 @@ def evaluate(dataset_urn: str, task: str, min_tier: str = "silver", graph=None) 
             ),
         )
 
-    # NO-GO: busca una alternativa del equipo mejor rankeado.
+    # NO-GO: look for an alternative from the highest-ranked team.
     best_team = None
     board = trust_lookup.leaderboard(graph=graph)
     if board:
@@ -71,7 +71,7 @@ def evaluate(dataset_urn: str, task: str, min_tier: str = "silver", graph=None) 
 
 
 def _find_dataset_by_tier(graph, tier: str) -> str | None:
-    """Busca un dataset etiquetado con un tier dado (para el demo)."""
+    """Finds a dataset tagged with a given tier (for the demo)."""
     q = (
         'query s($tag: String!) { search(input: {type: DATASET, query: "*", '
         'orFilters: [{and: [{field: "tags", values: [$tag]}]}], start: 0, count: 1}) '
@@ -96,7 +96,7 @@ def _print_decision(d: Decision) -> None:
 
 def _demo() -> None:
     graph = get_graph()
-    print("Gatekeeper agent: consulta el Trust Score en DataHub antes de usar datos.")
+    print("Gatekeeper agent: reads the Trust Score from DataHub before using data.")
 
     gold = _find_dataset_by_tier(graph, "gold")
     risky = _find_dataset_by_tier(graph, "at-risk") or _find_dataset_by_tier(graph, "bronze")

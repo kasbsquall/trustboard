@@ -1,8 +1,8 @@
-"""Modelos ORM del historico local de scores.
+"""ORM models for the local score history.
 
-Refleja backend/database/schema.sql. SQLAlchemy genera el DDL compatible
-tanto con PostgreSQL como con SQLite. Los UUID se guardan como texto para
-portabilidad entre ambos motores.
+Mirrors backend/database/schema.sql. SQLAlchemy generates DDL compatible with
+both PostgreSQL and SQLite. UUIDs are stored as text for portability across the
+two engines.
 """
 from __future__ import annotations
 

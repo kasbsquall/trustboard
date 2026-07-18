@@ -1,11 +1,11 @@
-"""Siembra un historico de varias semanas para el dashboard (preparacion demo).
+"""Seeds a multi-week history for the dashboard (demo preparation).
 
-La semana actual usa el Trust Score REAL calculado por el Auditor. Las semanas
-anteriores se derivan con una trayectoria por equipo que da una narrativa al
-leaderboard: Marketing remontando (most improved), Engineering cayendo, el
-resto subiendo suave. Se declara como preparacion del entorno de demo.
+The current week uses the REAL Trust Score computed by the Auditor. Earlier
+weeks are derived from a per-team trajectory that gives the leaderboard a
+narrative: Marketing climbing back (most improved), Engineering falling, the
+rest rising gently. It is declared as demo environment preparation.
 
-Uso:
+Usage:
     .venv/Scripts/python scripts/seed_history.py
 """
 from __future__ import annotations
@@ -20,13 +20,14 @@ from agents.auditor import audit_all_domains  # noqa: E402
 from backend.database.repository import _monday_of, save_weekly_snapshot  # noqa: E402
 from mcp_client.datahub_connection import get_graph  # noqa: E402
 
-# Cuanto RESTAR al score actual en las semanas -3, -2, -1 (score = actual - offset).
-# Offset positivo = venia mas abajo (subio). Negativo = venia mas alto (cayo).
+# How much to SUBTRACT from the current score on weeks -3, -2, -1
+# (score = current - offset). A positive offset means it came from lower (it
+# went up). A negative one means it came from higher (it fell).
 TRAJECTORIES = {
-    "Data Platform Team": [4.0, 3.0, 1.5],          # estable alto, leve subida
-    "Ecommerce Operations": [10.0, 6.0, 2.5],       # subiendo
-    "Engineering Division": [-7.0, -4.0, -3.0],     # cayo esta semana
-    "E-Commerce": [5.0, 3.0, 1.5],                  # subiendo lento
+    "Data Platform Team": [4.0, 3.0, 1.5],          # steady high, slight rise
+    "Ecommerce Operations": [10.0, 6.0, 2.5],       # rising
+    "Engineering Division": [-7.0, -4.0, -3.0],     # fell this week
+    "E-Commerce": [5.0, 3.0, 1.5],                  # rising slowly
     "Marketing": [14.0, 10.0, 6.0],                 # most improved
 }
 _DEFAULT = [8.0, 5.0, 2.0]
@@ -48,9 +49,9 @@ def main() -> None:
 
     this_monday = _monday_of(date.today())
 
-    # Semanas -3, -2, -1 (mas antigua primero para que rank_last_week se resuelva).
+    # Weeks -3, -2, -1 (oldest first so that rank_last_week resolves).
     for weeks_ago in (3, 2, 1):
-        idx = 3 - weeks_ago  # 0,1,2 -> offset de esa semana
+        idx = 3 - weeks_ago  # 0,1,2 -> that week's offset
         scores = {
             name: current[name] - TRAJECTORIES.get(name, _DEFAULT)[idx]
             for name in current
@@ -58,9 +59,9 @@ def main() -> None:
         week_of = this_monday - timedelta(days=7 * weeks_ago)
         rows = _week_rows(scores)
         save_weekly_snapshot(rows, week_of=week_of)
-        print(f"  semana {week_of.isoformat()}: {[(r['domain_name'], r['trust_score']) for r in rows]}")
+        print(f"  week {week_of.isoformat()}: {[(r['domain_name'], r['trust_score']) for r in rows]}")
 
-    # Semana actual con componentes reales.
+    # Current week with real components.
     current_rows = []
     for rank, a in enumerate(sorted(results, key=lambda x: x.score.score, reverse=True), 1):
         comps = a.score.component_averages
@@ -77,8 +78,8 @@ def main() -> None:
             }
         )
     save_weekly_snapshot(current_rows, week_of=this_monday)
-    print(f"  semana {this_monday.isoformat()} (actual, real): guardada")
-    print("\nHistorico de 4 semanas sembrado.")
+    print(f"  week {this_monday.isoformat()} (current, real): saved")
+    print("\n4-week history seeded.")
 
 
 if __name__ == "__main__":

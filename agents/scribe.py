@@ -1,19 +1,19 @@
-"""Agente 2: El Escriba.
+"""Agent 2: The Scribe.
 
-Toma los Trust Scores calculados por el Auditor y los escribe DE VUELTA al
-grafo de DataHub, de tres formas complementarias para que el score sea
-descubrible por personas y por otros agentes:
+Takes the Trust Scores computed by the Auditor and writes them BACK to the
+DataHub graph in three complementary ways, so the score is discoverable both
+by people and by other agents:
 
-  1. structured property a nivel de dominio (trustScore + trustTier),
-     consultable y filtrable en la UI de DataHub.
-  2. tag de tier (Trust: Gold/Silver/Bronze/At-Risk) sobre el dominio,
-     con quita-antes-de-poner para que el tier viejo no quede pegado.
-  3. descripcion del dominio con el desglose por componente, en un bloque
-     delimitado idempotente.
+  1. domain-level structured property (trustScore + trustTier), queryable and
+     filterable in the DataHub UI.
+  2. tier tag (Trust: Gold/Silver/Bronze/At-Risk) on the domain, with
+     remove-before-add so the old tier does not stay stuck.
+  3. domain description with the per-component breakdown, inside an idempotent
+     delimited block.
 
-Este es el paso que satisface el criterio "contribuir de vuelta al grafo, no
-solo leerlo". Todas las escrituras son idempotentes: correr el Escriba N veces
-deja el mismo estado.
+This is the step that satisfies the "contribute back to the graph, not just
+read from it" criterion. Every write is idempotent: running the Scribe N times
+leaves the same state.
 """
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def _emit(graph, entity_urn: str, aspect) -> None:
 
 
 def ensure_definitions(graph) -> None:
-    """Define (idempotente) las structured properties y los tags de tier."""
+    """Defines (idempotently) the structured properties and the tier tags."""
     _emit(
         graph,
         PROP_SCORE,
@@ -101,17 +101,17 @@ def _write_structured_properties(graph, domain_urn: str, score: float, tier: str
 
 
 def _write_tier_tag(graph, asset_urn: str, tier: str) -> None:
-    """Quita los tags de tier que no aplican y pone el actual (idempotente).
+    """Removes the tier tags that do not apply and adds the current one (idempotent).
 
-    Se aplica a datasets (los dominios no soportan el aspecto globalTags). Deja
-    el catalogo filtrable por confianza: "muestrame todos los datasets Bronze".
+    Applies to datasets (domains do not support the globalTags aspect). This
+    leaves the catalog filterable by trust: "show me every Bronze dataset".
     """
     for name, (tag_urn, _n, _c) in TIERS.items():
         if name == tier:
             continue
         try:
             execute_graphql_retry(graph, _REMOVE_TAG, variables={"tag": tag_urn, "urn": asset_urn})
-        except Exception:  # noqa: BLE001 - no estaba puesto, sin problema
+        except Exception:  # noqa: BLE001 - it was not set, no problem
             pass
     execute_graphql_retry(graph, _ADD_TAG, variables={"tag": TIERS[tier][0], "urn": asset_urn})
 
@@ -135,12 +135,12 @@ def _render_scorecard(score: DomainScore, tier: str) -> str:
 
 
 def _write_description(graph, domain_urn: str, name: str, score: DomainScore, tier: str) -> None:
-    """Actualiza la descripcion del dominio con el scorecard en un bloque delimitado."""
+    """Updates the domain description with the scorecard inside a delimited block."""
     from datahub.metadata.schema_classes import DomainPropertiesClass as _DP
 
     current = graph.get_aspect(domain_urn, _DP)
     base_desc = current.description if current and current.description else ""
-    # Quita cualquier bloque TrustBoard previo.
+    # Strip any previous TrustBoard block.
     if _DESC_START in base_desc and _DESC_END in base_desc:
         before = base_desc.split(_DESC_START)[0].rstrip()
         after = base_desc.split(_DESC_END)[-1].lstrip()
@@ -162,11 +162,11 @@ def _write_description(graph, domain_urn: str, name: str, score: DomainScore, ti
 
 
 def write_domain_score(graph, audited: AuditedDomain) -> None:
-    """Escribe el Trust Score de un dominio al grafo.
+    """Writes a domain's Trust Score to the graph.
 
-    A nivel dominio: structured property (score + tier) + descripcion con el
-    scorecard. A nivel dataset: tag del tier individual de cada dataset (los
-    dominios no soportan tags).
+    At the domain level: structured property (score + tier) plus a description
+    with the scorecard. At the dataset level: the individual tier tag of each
+    dataset (domains do not support tags).
     """
     info, score = audited.info, audited.score
     tier = trust_tier(score.score)
@@ -177,10 +177,10 @@ def write_domain_score(graph, audited: AuditedDomain) -> None:
 
 
 def write_all(graph=None, results: list[AuditedDomain] | None = None) -> list[AuditedDomain]:
-    """Escribe todos los scores de vuelta a DataHub (audita si no recibe results)."""
+    """Writes every score back to DataHub (audits first if no results are given)."""
     graph = graph or get_graph()
     ensure_definitions(graph)
-    time.sleep(2)  # dar tiempo a que las definiciones se registren
+    time.sleep(2)  # give the definitions time to register
 
     results = results if results is not None else audit_all_domains(graph)
     all_dataset_scores = []
@@ -189,20 +189,20 @@ def write_all(graph=None, results: list[AuditedDomain] | None = None) -> list[Au
         all_dataset_scores.extend(audited.dataset_scores)
         tier = trust_tier(audited.score.score)
         print(
-            f"  escrito: {audited.info.name:<24} score={audited.score.score:.1f} "
-            f"tier={tier}  ({len(audited.dataset_scores)} datasets etiquetados)"
+            f"  written: {audited.info.name:<24} score={audited.score.score:.1f} "
+            f"tier={tier}  ({len(audited.dataset_scores)} datasets tagged)"
         )
 
-    # Remediacion: abre/resuelve incidents en los datasets toxicos.
+    # Remediation: raise/resolve incidents on the toxic datasets.
     report = remediate(graph, all_dataset_scores)
     print(
-        f"\nIncidents: {report.raised} abiertos, {report.resolved} resueltos, "
-        f"{report.unchanged} sin cambio."
+        f"\nIncidents: {report.raised} raised, {report.resolved} resolved, "
+        f"{report.unchanged} unchanged."
     )
     return results
 
 
 if __name__ == "__main__":
-    print("Escribiendo Trust Scores de vuelta al grafo de DataHub...\n")
+    print("Writing Trust Scores back to the DataHub graph...\n")
     write_all()
-    print("\nOK: scores escritos como structured property + tag + descripcion en cada dominio.")
+    print("\nOK: scores written as structured property + tag + description on each domain.")

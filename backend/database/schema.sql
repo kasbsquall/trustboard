@@ -1,5 +1,5 @@
--- TrustBoard: historico local de scores, complementario a lo que vive en DataHub.
--- Compatible con PostgreSQL 14+. Para SQLite ver nota al final.
+-- TrustBoard: local score history, complementary to what lives in DataHub.
+-- Compatible with PostgreSQL 14+. For SQLite see the note at the end.
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS domain_scores (
     assertions_passing_pct DECIMAL(5,2),
     freshness_score DECIMAL(5,2),
     documentation_score DECIMAL(5,2),
+    ownership_score DECIMAL(5,2),
     rank_this_week INT,
     rank_last_week INT,
     written_to_datahub BOOLEAN DEFAULT false,
@@ -32,6 +33,6 @@ CREATE TABLE IF NOT EXISTS leaderboard_posts (
 CREATE INDEX IF NOT EXISTS idx_domain_scores_week ON domain_scores (week_of);
 CREATE INDEX IF NOT EXISTS idx_domain_scores_domain ON domain_scores (domain_name);
 
--- Nota SQLite: reemplazar UUID por TEXT con hex(randomblob(16)),
--- DECIMAL por REAL y NOW() por CURRENT_TIMESTAMP. Los modelos de
--- backend/database/models.py generan ambas variantes via SQLAlchemy.
+-- SQLite note: replace UUID with TEXT using hex(randomblob(16)), DECIMAL with
+-- REAL and NOW() with CURRENT_TIMESTAMP. The models in
+-- backend/database/models.py generate both variants through SQLAlchemy.

@@ -1,9 +1,9 @@
-"""Lectura del Trust Score desde el grafo de DataHub.
+"""Reading the Trust Score back from the DataHub graph.
 
-Lee lo que el Escriba escribio de vuelta (structured property a nivel dominio,
-tag de tier a nivel dataset). Es la base del ANGULO KILLER: el servidor MCP y
-el agente Gatekeeper consumen estas funciones para que el conocimiento de
-confianza que produjo TrustBoard sea heredado por otros agentes.
+Reads what the Scribe wrote back (domain-level structured property, dataset-level
+tier tag). This is the foundation of the KILLER ANGLE: the MCP server and the
+Gatekeeper agent consume these functions so that the trust knowledge TrustBoard
+produced is inherited by other agents.
 """
 from __future__ import annotations
 
@@ -59,14 +59,14 @@ def _extract_sp(structured_properties: dict | None) -> tuple[float | None, str |
         if not values:
             continue
         if purn == PROP_SCORE and "numberValue" in values[0]:
-            score = round(values[0]["numberValue"], 2)  # limpia la precision del float
+            score = round(values[0]["numberValue"], 2)  # clean up the float precision
         elif purn == PROP_TIER and "stringValue" in values[0]:
             tier = values[0]["stringValue"]
     return score, tier
 
 
 def read_domain_trust(urn: str, graph=None) -> dict:
-    """Trust Score de un dominio (equipo) leido de su structured property."""
+    """Trust Score of a domain (team), read from its structured property."""
     graph = graph or get_graph()
     dom = execute_graphql_retry(graph, _DOMAIN_SP, variables={"urn": urn}).get("domain")
     if not dom:
@@ -83,7 +83,7 @@ def read_domain_trust(urn: str, graph=None) -> dict:
 
 
 def read_dataset_trust(urn: str, graph=None) -> dict:
-    """Trust del dataset: tier de su tag + score del dominio dueno."""
+    """Dataset trust: tier from its tag plus the score of the owning domain."""
     graph = graph or get_graph()
     ds = execute_graphql_retry(graph, _DATASET_TRUST, variables={"urn": urn}).get("dataset")
     if not ds:
@@ -112,7 +112,7 @@ def read_dataset_trust(urn: str, graph=None) -> dict:
 
 
 def read_trust(urn: str, graph=None) -> dict:
-    """Despacha a dominio o dataset segun el tipo de urn."""
+    """Dispatches to domain or dataset depending on the urn type."""
     if urn.startswith("urn:li:domain:"):
         return read_domain_trust(urn, graph=graph)
     if urn.startswith("urn:li:dataset:"):
@@ -121,7 +121,7 @@ def read_trust(urn: str, graph=None) -> dict:
 
 
 def is_trustworthy(urn: str, min_tier: str = "silver", graph=None) -> dict:
-    """Politica GO/NO-GO: el asset alcanza el tier minimo de confianza?"""
+    """GO/NO-GO policy: does the asset reach the minimum trust tier?"""
     info = read_trust(urn, graph=graph)
     tier = info.get("trust_tier")
     if tier is None:
@@ -136,7 +136,7 @@ def is_trustworthy(urn: str, min_tier: str = "silver", graph=None) -> dict:
 
 
 def leaderboard(graph=None) -> list[dict]:
-    """Ranking de equipos por Trust Score, leido del grafo."""
+    """Team ranking by Trust Score, read from the graph."""
     graph = graph or get_graph()
     results = execute_graphql_retry(graph, _LEADERBOARD)["search"]["searchResults"]
     teams = []

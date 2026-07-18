@@ -1,7 +1,7 @@
-# Infraestructura propia de TrustBoard.
-# DataHub se levanta aparte con su propio quickstart (datahub docker quickstart),
-# por eso no se incluye aqui. Puerto 5433 para no chocar con el PostgreSQL
-# interno de DataHub ni con un postgres local en 5432.
+# TrustBoard's own infrastructure.
+# DataHub is brought up separately with its own quickstart (datahub docker
+# quickstart), which is why it is not included here. Port 5433 avoids clashing
+# with DataHub's internal PostgreSQL or with a local postgres on 5432.
 
 services:
   trustboard-db:

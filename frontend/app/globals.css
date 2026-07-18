@@ -148,19 +148,22 @@ a {
   border-bottom: 1px solid var(--surface-line-strong);
 }
 
-/* Lockup: el isotipo acompana al bloque completo (kicker + titulo), no solo
-   al kicker. El gap es pequeno porque el SVG ya trae ~6px de aire interno. */
+/* Lockup: the mark sits alongside the whole block (kicker + title), not just
+   the kicker. The gap is small because the SVG already carries ~6px of
+   internal breathing room. */
 .masthead__lockup {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  column-gap: 6px;
+  /* The mark carries ~14% internal padding inside its viewBox, so the optical
+     gap scales with its size. At 84px that padding alone is the gap. */
+  column-gap: 0;
 }
 
 .masthead__lockup > svg { color: var(--text); }
 
-/* Una sola marca en la cabecera: el h1 es el producto. La liga es el
-   descriptor de la vista, no un segundo nombre compitiendo. */
+/* A single brand in the masthead: the h1 is the product. The league is the
+   descriptor of the view, not a second name competing with it. */
 .masthead__tagline {
   margin-top: 6px;
   font-size: var(--step--1);
@@ -756,3 +759,16 @@ a {
 
 .pager a:hover { color: var(--text); }
 .pager__next { text-align: right; }
+
+.signals__note {
+  margin: calc(var(--ma-lg) * -1 + var(--ma-sm)) 0 var(--ma-lg);
+  font-size: var(--step--1);
+  color: var(--text-faint);
+  line-height: 1.5;
+  max-width: 68ch;
+}
+
+.signal-cell__na {
+  color: var(--text-faint);
+  opacity: 0.75;
+}

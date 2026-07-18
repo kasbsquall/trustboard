@@ -1,11 +1,11 @@
-"""Agente 1: El Auditor.
+"""Agent 1: The Auditor.
 
-Recorre los datasets de DataHub, extrae las senales de calidad, documentacion,
-ownership y freshness leyendo aspectos via el SDK, los agrupa por dominio
-(equipo) y calcula el Trust Score compuesto usando scoring.trust_score.
+Walks the DataHub datasets, extracts quality, documentation, ownership and
+freshness signals by reading aspects through the SDK, groups them by domain
+(team) and computes the composite Trust Score using scoring.trust_score.
 
-Devuelve un DomainScore por equipo, listo para que el Escriba lo escriba de
-vuelta al grafo y el Heraldo lo publique.
+Returns one DomainScore per team, ready for the Scribe to write back to the
+graph and for the Herald to publish.
 """
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ class DomainInfo:
 
 @dataclass(frozen=True)
 class AuditedDomain:
-    """Resultado de auditar un dominio: info, score agregado y scores por dataset."""
+    """Result of auditing a domain: info, aggregate score and per-dataset scores."""
 
     info: DomainInfo
     score: DomainScore
@@ -53,12 +53,12 @@ class AuditedDomain:
 def _safe_aspect(graph, urn: str, aspect_type):
     try:
         return graph.get_aspect(urn, aspect_type)
-    except Exception:  # noqa: BLE001 - aspecto ausente o error puntual => sin senal
+    except Exception:  # noqa: BLE001 - missing aspect or one-off error => no signal
         return None
 
 
 def list_domains(graph) -> dict[str, str]:
-    """Devuelve {domain_urn: name} de los dominios con nombre."""
+    """Returns {domain_urn: name} for the domains that have a name."""
     query = (
         '{ search(input: {type: DOMAIN, query: "*", start: 0, count: 100}) '
         "{ searchResults { entity { urn ... on Domain { properties { name } } } } } }"
@@ -82,23 +82,23 @@ def list_dataset_urns(graph) -> list[str]:
 
 
 def extract_signals(graph, dataset_urn: str, now_ms: int | None = None) -> DatasetSignals:
-    """Lee los aspectos de un dataset y los traduce a DatasetSignals."""
+    """Reads a dataset's aspects and translates them into DatasetSignals."""
     now_ms = now_ms or int(time.time() * 1000)
 
-    # Calidad: testResults.
+    # Quality: testResults.
     test_results = _safe_aspect(graph, dataset_urn, TestResultsClass)
     passing = len(test_results.passing or []) if test_results else 0
     failing = len(test_results.failing or []) if test_results else 0
     has_tests = test_results is not None and (passing + failing) > 0
 
-    # Documentacion: descripcion a nivel dataset (editable o de origen).
+    # Documentation: dataset-level description (editable or from the source).
     editable = _safe_aspect(graph, dataset_urn, EditableDatasetPropertiesClass)
     props = _safe_aspect(graph, dataset_urn, DatasetPropertiesClass)
     has_description = bool(
         (editable and editable.description) or (props and props.description)
     )
 
-    # Documentacion: docs a nivel de campo.
+    # Documentation: field-level docs.
     has_field_docs = False
     editable_schema = _safe_aspect(graph, dataset_urn, EditableSchemaMetadataClass)
     if editable_schema and editable_schema.editableSchemaFieldInfo:
@@ -108,7 +108,7 @@ def extract_signals(graph, dataset_urn: str, now_ms: int | None = None) -> Datas
         if schema and schema.fields:
             has_field_docs = any(f.description for f in schema.fields)
 
-    # Documentacion: glosario.
+    # Documentation: glossary.
     terms = _safe_aspect(graph, dataset_urn, GlossaryTermsClass)
     has_glossary_terms = bool(terms and terms.terms)
 
@@ -116,7 +116,7 @@ def extract_signals(graph, dataset_urn: str, now_ms: int | None = None) -> Datas
     ownership = _safe_aspect(graph, dataset_urn, OwnershipClass)
     has_owner = bool(ownership and ownership.owners)
 
-    # Freshness: dias desde la ultima modificacion registrada.
+    # Freshness: days since the last recorded modification.
     freshness_days: float | None = None
     if props and props.lastModified and props.lastModified.time:
         freshness_days = max(0.0, (now_ms - props.lastModified.time) / _MS_PER_DAY)
@@ -142,7 +142,7 @@ def _domain_of(graph, dataset_urn: str) -> str | None:
 
 
 def audit_all_domains(graph=None) -> list[AuditedDomain]:
-    """Recorre DataHub y devuelve el Trust Score de cada dominio (equipo)."""
+    """Walks DataHub and returns the Trust Score of each domain (team)."""
     graph = graph or get_graph()
     domain_names = list_domains(graph)
     now_ms = int(time.time() * 1000)
@@ -174,7 +174,7 @@ def audit_all_domains(graph=None) -> list[AuditedDomain]:
 def _print_leaderboard(results: list[AuditedDomain]) -> None:
     from scoring.trust_score import trust_tier
 
-    print(f"\n{'#':>2}  {'Equipo':<24} {'Score':>6}  {'Tier':<8} {'Datasets':>8}  Debil")
+    print(f"\n{'#':>2}  {'Team':<24} {'Score':>6}  {'Tier':<8} {'Datasets':>8}  Weakest")
     print("-" * 74)
     for i, a in enumerate(results, 1):
         ds = a.score

@@ -24,9 +24,9 @@ to win, and turns the resulting score into a trust signal that other agents cons
 
 Three specialized agents, plus a fourth that proves the point:
 
-1. **The Auditor** connects to DataHub through the SDK / MCP Server, walks every dataset by domain,
+1. **The Auditor** connects to DataHub through the acryl-datahub SDK, walks every dataset by domain,
    and computes a composite Trust Score from four signals: quality (passing data tests),
-   documentation, ownership and lineage freshness. Missing signals are renormalized, never counted
+   documentation, ownership and update freshness. Missing signals are renormalized, never counted
    as silent zeros.
 2. **The Scribe** writes the score *back to the graph*: a structured property on each domain, a
    scorecard in the domain description, a Gold/Silver/Bronze tier tag on every dataset, and an
@@ -52,7 +52,7 @@ run you can open DataHub and see, on each domain and dataset:
 | Scorecard with component breakdown | Domain description (idempotent block) | Any human opening the asset |
 | `Trust: Gold/Silver/Bronze` tag | Global tag on each dataset | "Show me all Bronze datasets" in search |
 | Operational incident | Incident on low-trust datasets | On-call, data owners, the DataHub UI |
-| `get_trust_score` / `is_trustworthy` | Custom MCP tools | Any other AI agent in the ecosystem |
+| `get_trust_score`, `is_trustworthy`, `get_team_leaderboard` | Custom MCP tools | Any other AI agent in the ecosystem |
 
 ## How the Trust Score is computed
 
@@ -62,7 +62,7 @@ A weighted average of four components, each 0-100:
 Trust Score = 0.35 * quality        (passing data tests / total tests)
             + 0.25 * documentation  (description + field docs + glossary terms)
             + 0.20 * ownership      (has an assigned owner)
-            + 0.20 * freshness      (recency of lineage / last update)
+            + 0.20 * freshness      (how recently the dataset was updated)
 ```
 
 If a signal is absent for a dataset (for example no tests), its weight is removed and the remaining
@@ -134,20 +134,21 @@ python -m mcp_server.trustboard_mcp   # or run the MCP server for other agents t
 ```
 trustboard/
 ├── agents/            auditor, scribe, incidents, herald, gatekeeper, trust_lookup
-├── scoring/           pure Trust Score logic (+ tests) and historical tracking
+├── scoring/           pure Trust Score logic
+├── tests/             unit tests for the scoring model
 ├── mcp_client/        authenticated DataHub connection (SDK + Agent Context Kit)
 ├── mcp_server/        FastMCP server exposing get_trust_score to other agents
 ├── backend/           FastAPI + SQLite history
-├── frontend/          Next.js dashboard (Data Trust League)
+├── frontend/          Next.js dashboard
 ├── scripts/           datapack loader, demo seed, history seed, write-back probe
-├── datahub-skill-contribution/   the trust-score skill contributed upstream
+├── datahub-skill-contribution/   the datahub-trust-score skill, as submitted upstream
 ├── examples/          sample outputs (leaderboard, Slack payload, domain scores)
 └── run_week.py        weekly orchestrator
 ```
 
 ## How it maps to the judging criteria
 
-- **Use of DataHub:** reads the context graph (tests, ownership, lineage, docs) and writes back six
+- **Use of DataHub:** reads the context graph (tests, ownership, docs, update recency) and writes back six
   kinds of metadata: structured properties, tier tags, descriptions, incidents, and an MCP tool.
 - **Technical Execution:** idempotent writes, retry with backoff on transient GMS errors,
   renormalized scoring with no silent zeros, unit tests, runs end to end.

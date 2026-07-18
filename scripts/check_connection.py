@@ -1,12 +1,12 @@
-"""Smoke test del Paso 3: verifica la conexion autenticada a DataHub.
+"""Step 3 smoke test: verifies the authenticated connection to DataHub.
 
-Comprueba de punta a punta que el SDK puede:
-  - autenticarse con el token del .env,
-  - listar los dominios (los "equipos" del leaderboard),
-  - contar datasets,
-  - leer el aspecto testResults de un dataset (la senal de calidad del score).
+Checks end to end that the SDK can:
+  - authenticate with the token from .env,
+  - list the domains (the leaderboard "teams"),
+  - count datasets,
+  - read a dataset's testResults aspect (the quality signal of the score).
 
-Uso:
+Usage:
     .venv/Scripts/python scripts/check_connection.py
 """
 from __future__ import annotations
@@ -14,7 +14,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# Permite ejecutar el script directamente (agrega la raiz del proyecto al path).
+# Allows running the script directly (adds the project root to the path).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from datahub.metadata.schema_classes import TestResultsClass  # noqa: E402
@@ -35,24 +35,24 @@ DATASET_COUNT_QUERY = """
 
 def main() -> None:
     graph = get_graph()
-    print("Conectado. Actor:", graph.execute_graphql("{ me { corpUser { username } } }")["me"]["corpUser"]["username"])
+    print("Connected. Actor:", graph.execute_graphql("{ me { corpUser { username } } }")["me"]["corpUser"]["username"])
 
     domains = graph.execute_graphql(DOMAINS_QUERY)["listDomains"]
-    print(f"\nDominios ({domains['total']}):")
+    print(f"\nDomains ({domains['total']}):")
     for d in domains["domains"]:
         name = (d.get("properties") or {}).get("name") or d["urn"]
         print(f"  - {name}")
 
     total_datasets = graph.execute_graphql(DATASET_COUNT_QUERY)["search"]["total"]
-    print(f"\nDatasets totales: {total_datasets}")
+    print(f"\nTotal datasets: {total_datasets}")
 
-    # Lee testResults de un dataset de muestra para confirmar la senal de calidad.
+    # Read testResults from a sample dataset to confirm the quality signal.
     sample = graph.execute_graphql(
         '{ search(input: {type: DATASET, query: "*", start: 0, count: 5}) '
         "{ searchResults { entity { urn } } } }"
     )["search"]["searchResults"]
 
-    print("\ntestResults por dataset (muestra):")
+    print("\ntestResults per dataset (sample):")
     found = 0
     for r in sample:
         urn = r["entity"]["urn"]
@@ -63,9 +63,9 @@ def main() -> None:
             print(f"  - {urn.split(',')[1] if ',' in urn else urn}: {passing} pass / {failing} fail")
             found += 1
     if found == 0:
-        print("  (ningun dataset de la muestra tiene testResults; se veran otros al recorrer todos)")
+        print("  (no dataset in the sample has testResults; others will show up when walking all of them)")
 
-    print("\nOK: conexion autenticada y lectura de senales verificada.")
+    print("\nOK: authenticated connection and signal reading verified.")
 
 
 if __name__ == "__main__":

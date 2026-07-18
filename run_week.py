@@ -1,13 +1,14 @@
-"""Orquestador del ciclo semanal de TrustBoard.
+"""Orchestrator for the TrustBoard weekly cycle.
 
-Corre el pipeline completo de los tres agentes de una sola vez:
-  1. Auditor  -> calcula el Trust Score de cada equipo.
-  2. Escriba  -> escribe los scores de vuelta a DataHub (property, tags,
-                 descripcion, incidents).
-  3. Snapshot -> guarda el resultado en el historico local (para tendencias).
-  4. Heraldo  -> publica el leaderboard en Slack comparando vs la semana previa.
+Runs the full three-agent pipeline in one go:
+  1. Auditor  -> computes each team's Trust Score.
+  2. Scribe   -> writes the scores back to DataHub (property, tags,
+                 description, incidents).
+  3. Snapshot -> stores the result in the local history (for trends).
+  4. Herald   -> publishes the leaderboard to Slack, comparing against the
+                 previous week.
 
-Uso:
+Usage:
     .venv/Scripts/python run_week.py
 """
 from __future__ import annotations
@@ -48,19 +49,19 @@ def _snapshot_rows(results) -> list[dict]:
 def main() -> None:
     graph = get_graph()
 
-    print("[1/4] Auditor: calculando Trust Scores...")
+    print("[1/4] Auditor: computing Trust Scores...")
     results = audit_all_domains(graph)
     for a in results:
         print(f"      {a.info.name:<24} {a.score.score:>5.1f}  {trust_tier(a.score.score)}")
 
-    print("\n[2/4] Escriba: escribiendo de vuelta al grafo de DataHub...")
+    print("\n[2/4] Scribe: writing back to the DataHub graph...")
     scribe.write_all(graph, results=results)
 
-    print("\n[3/4] Snapshot: guardando el historico semanal...")
+    print("\n[3/4] Snapshot: saving the weekly history...")
     week = save_weekly_snapshot(_snapshot_rows(results))
-    print(f"      snapshot guardado para la semana del {week.isoformat()}")
+    print(f"      snapshot saved for the week of {week.isoformat()}")
 
-    print("\n[4/4] Heraldo: publicando el leaderboard...")
+    print("\n[4/4] Herald: publishing the leaderboard...")
     previous = previous_week_scores()
     herald.publish_leaderboard(previous=previous, graph=graph)
 
@@ -68,7 +69,7 @@ def main() -> None:
         top = max(results, key=lambda a: a.score.score).info.name
         record_leaderboard_post(date.today(), top_domain=top, most_improved=None)
 
-    print("\nCiclo semanal completo.")
+    print("\nWeekly cycle complete.")
 
 
 if __name__ == "__main__":

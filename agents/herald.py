@@ -1,14 +1,15 @@
-"""Agente 3: El Heraldo.
+"""Agent 3: The Herald.
 
-Arma el ranking semanal comparando contra la semana anterior y lo publica en
-Slack con formato de marcador deportivo: podio, "equipo de la semana" y mencion
-al que mas mejoro. La gamificacion es el gancho social que consigue que los
-equipos alimenten el grafo; se apoya en el trabajo real que ya hicieron el
-Auditor y el Escriba.
+Builds the weekly ranking by comparing against the previous week and publishes
+it to Slack in scoreboard format: podium, "team of the week" and a mention of
+the biggest improver. The gamification is the social hook that gets teams to
+feed the graph; it builds on the real work already done by the Auditor and the
+Scribe.
 
-Sin SLACK_WEBHOOK_URL configurada, imprime el payload (util para examples/).
+With no SLACK_WEBHOOK_URL configured, it prints the payload (useful for
+examples/).
 
-Uso:
+Usage:
     .venv/Scripts/python -m agents.herald
 """
 from __future__ import annotations
@@ -34,7 +35,7 @@ def _delta_label(name: str, score: float, previous: dict[str, float] | None) -> 
 
 
 def build_message(teams: list[dict], previous: dict[str, float] | None = None) -> dict:
-    """Construye el payload de Slack (Block Kit) del leaderboard semanal."""
+    """Builds the Slack (Block Kit) payload for the weekly leaderboard."""
     if not teams:
         return {"text": "TrustBoard: no scores available yet."}
 
@@ -51,7 +52,7 @@ def build_message(teams: list[dict], previous: dict[str, float] | None = None) -
             most_improved = max(gains, key=lambda g: g[1])
 
     blocks: list[dict] = [
-        {"type": "header", "text": {"type": "plain_text", "text": "TrustBoard Weekly · Data Trust League"}},
+        {"type": "header", "text": {"type": "plain_text", "text": "TrustBoard Weekly"}},
         {"type": "context", "elements": [{"type": "mrkdwn", "text": "Trust Score = quality + documentation + ownership + freshness, computed from DataHub and written back to the graph."}]},
         {"type": "divider"},
     ]
@@ -70,12 +71,12 @@ def build_message(teams: list[dict], previous: dict[str, float] | None = None) -
         footer += f"\n*Most improved:* {most_improved[0]} (+{most_improved[1]:.1f} this week)"
     blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": footer}})
 
-    fallback = f"TrustBoard Weekly · Team of the week: {top['name']} ({top['trust_score']:.1f})"
+    fallback = f"TrustBoard Weekly. Team of the week: {top['name']} ({top['trust_score']:.1f})"
     return {"text": fallback, "blocks": blocks}
 
 
 def post_to_slack(payload: dict) -> bool:
-    """Publica el mensaje en Slack via Incoming Webhook. Devuelve si se envio."""
+    """Posts the message to Slack through an Incoming Webhook. Returns whether it was sent."""
     webhook = get_settings().slack_webhook_url
     if not webhook:
         return False
@@ -85,14 +86,14 @@ def post_to_slack(payload: dict) -> bool:
 
 
 def publish_leaderboard(previous: dict[str, float] | None = None, graph=None) -> dict:
-    """Lee el leaderboard del grafo, arma el mensaje y lo publica (o lo imprime)."""
+    """Reads the leaderboard from the graph, builds the message and publishes it (or prints it)."""
     teams = trust_lookup.leaderboard(graph=graph)
     payload = build_message(teams, previous=previous)
 
     if post_to_slack(payload):
-        print("Leaderboard publicado en Slack.")
+        print("Leaderboard published to Slack.")
     else:
-        print("SLACK_WEBHOOK_URL no configurada. Payload generado:\n")
+        print("SLACK_WEBHOOK_URL not configured. Generated payload:\n")
         print(json.dumps(payload, indent=2))
     return payload
 

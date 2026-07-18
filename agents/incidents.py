@@ -1,12 +1,13 @@
-"""Remediacion via incidents (parte del Escriba).
+"""Remediation through incidents (part of the Scribe).
 
-Convierte al Auditor de medidor en remediador: abre un Incident en DataHub
-sobre cada dataset "toxico" (Trust Score bajo umbral) explicando que senal
-fallo, y RESUELVE el incident cuando el dataset se recupera. Esto es accion
-real y visible en la UI de DataHub, no una anotacion pasiva.
+Turns the Auditor from a meter into a remediator: it raises an Incident in
+DataHub on every "toxic" dataset (Trust Score below the threshold) explaining
+which signal failed, and RESOLVES the incident once the dataset recovers. This
+is real action, visible in the DataHub UI, not a passive annotation.
 
-Idempotente: antes de abrir consulta los incidents ACTIVE de TrustBoard del
-dataset; no duplica. El prefijo del titulo identifica los incidents propios.
+Idempotent: before raising, it queries the dataset's ACTIVE TrustBoard
+incidents, so it does not duplicate. The title prefix identifies our own
+incidents.
 """
 from __future__ import annotations
 
@@ -72,7 +73,7 @@ def _active_incidents(graph, dataset_urn: str) -> list[str]:
 
 
 def remediate(graph, dataset_scores: list[DatasetScore], threshold: float = AT_RISK_THRESHOLD) -> IncidentReport:
-    """Abre/resuelve incidents segun el Trust Score de cada dataset."""
+    """Raises/resolves incidents according to each dataset's Trust Score."""
     raised = resolved = unchanged = 0
 
     for ds in dataset_scores:

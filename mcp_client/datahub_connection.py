@@ -1,14 +1,14 @@
-"""Conexion a DataHub (Paso 3).
+"""DataHub connection (Step 3).
 
-Dos vias, ambas apuntando al GMS en DATAHUB_GMS_URL:
+Two paths, both pointing at the GMS on DATAHUB_GMS_URL:
 
-1. SDK acryl-datahub via DataHubGraph: lectura de aspectos (ownership,
-   schemaMetadata, structuredProperties, testResults), ejecucion de GraphQL
-   (busquedas, upsertStructuredProperties). Es la via que usan el Auditor y
-   el Escriba.
+1. acryl-datahub SDK through DataHubGraph: reading aspects (ownership,
+   schemaMetadata, structuredProperties, testResults) and executing GraphQL
+   (searches, upsertStructuredProperties). This is the path the Auditor and the
+   Scribe use.
 
-2. Agent Context Kit: expone las tools de DataHub como herramientas LangChain
-   para un agente conversacional (build_langchain_tools).
+2. Agent Context Kit: exposes the DataHub tools as LangChain tools for a
+   conversational agent (build_langchain_tools).
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from config import get_settings
 
 @lru_cache
 def get_graph() -> DataHubGraph:
-    """Devuelve un DataHubGraph autenticado contra el GMS local (cacheado)."""
+    """Returns a DataHubGraph authenticated against the local GMS (cached)."""
     settings = get_settings()
     return DataHubGraph(
         DatahubClientConfig(
@@ -33,11 +33,11 @@ def get_graph() -> DataHubGraph:
 
 
 def execute_graphql_retry(graph, query: str, variables: dict | None = None, retries: int = 4):
-    """Ejecuta GraphQL reintentando ante errores transitorios de servidor.
+    """Executes GraphQL, retrying on transient server errors.
 
-    El GMS del quickstart devuelve 500 (connection lease timeout) cuando
-    OpenSearch esta bajo presion tras una rafaga de escrituras. Reintentar con
-    backoff exponencial resuelve estos casos sin fallar el pipeline.
+    The quickstart GMS returns 500 (connection lease timeout) when OpenSearch is
+    under pressure after a burst of writes. Retrying with exponential backoff
+    handles these cases without failing the pipeline.
     """
     last_err: Exception | None = None
     for attempt in range(retries):
@@ -51,10 +51,10 @@ def execute_graphql_retry(graph, query: str, variables: dict | None = None, retr
 
 
 def build_agent_tools(include_mutations: bool = False):
-    """Herramientas LangChain del Agent Context Kit.
+    """LangChain tools from the Agent Context Kit.
 
-    Se importa de forma perezosa para que el resto del proyecto no dependa de
-    datahub-agent-context si solo se usa el SDK.
+    Imported lazily so the rest of the project does not depend on
+    datahub-agent-context when only the SDK is used.
     """
     from datahub.sdk.main_client import DataHubClient
     from datahub_agent_context.langchain_tools import build_langchain_tools

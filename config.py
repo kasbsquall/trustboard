@@ -1,4 +1,4 @@
-"""Configuracion central de TrustBoard, cargada desde variables de entorno."""
+"""Central TrustBoard configuration, loaded from environment variables."""
 from __future__ import annotations
 
 from functools import lru_cache
@@ -20,5 +20,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Instancia unica de configuracion (cacheada)."""
+    """Single configuration instance (cached)."""
     return Settings()

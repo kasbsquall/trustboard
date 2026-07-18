@@ -89,7 +89,7 @@ export default async function Home() {
     <main className="shell">
       <header className="masthead">
         <div className="masthead__lockup">
-          <Logo size={44} />
+          <Logo size={84} />
           <div>
             <h1>TrustBoard</h1>
             <p className="masthead__tagline">

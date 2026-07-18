@@ -22,6 +22,10 @@ const SIGNALS = [
   { key: "freshness_score", label: "Freshness", weight: "20%", Icon: ClockCounterClockwise },
 ] as const;
 
+// Only link to DataHub when a public instance is configured. A local instance
+// is useless to anyone opening the deployed dashboard.
+const DATAHUB_URL = process.env.NEXT_PUBLIC_DATAHUB_URL;
+
 const NEXT_TIER: Record<string, { name: string; at: number } | null> = {
   "at-risk": { name: "bronze", at: 40 },
   bronze: { name: "silver", at: 60 },
@@ -117,12 +121,12 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
                 {Math.abs(score - team.score_last_week).toFixed(1)} points since last week
               </>
             )}
-            {team.domain_urn && (
+            {DATAHUB_URL && team.domain_urn && (
               <>
                 {" · "}
                 <a
                   className="inline-link"
-                  href={`http://localhost:9002/domain/${encodeURIComponent(team.domain_urn)}`}
+                  href={`${DATAHUB_URL}/domain/${encodeURIComponent(team.domain_urn)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -136,7 +140,8 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
           className="detail__score tnum"
           style={{ color: `var(--tier-${tier === "at-risk" ? "risk" : tier})` }}
         >
-          <NumberFlow value={Number(score.toFixed(1))} format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }} />
+          <NumberFlow value={Number(score.toFixed(1))} locales="en-US"
+            format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }} />
           <span className="detail__tier">{tier.replace("-", " ")} tier</span>
         </div>
       </header>
@@ -153,9 +158,12 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
           return (
             <div className="signal-cell" key={s.key}>
               <s.Icon size={17} weight="light" className="signal-cell__icon" aria-hidden="true" />
-              <div className="signal-cell__value tnum">{value != null ? Math.round(value) : "—"}</div>
+              <div className="signal-cell__value tnum" title={value == null ? "No signal collected. Its weight is redistributed across the other components." : undefined}>
+                {value != null ? Math.round(value) : "—"}
+              </div>
               <div className="signal-cell__label">
                 {s.label} · {s.weight}
+                {value == null && <span className="signal-cell__na"> · not measured</span>}
               </div>
               <div className="signal-cell__bar">
                 <i
@@ -169,6 +177,12 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
           );
         })}
       </section>
+
+      <p className="signals__note">
+        The team score is the average of its dataset scores, each renormalized over the
+        signals available for that dataset. These four figures are averages per component,
+        so they describe coverage rather than adding up to the score above.
+      </p>
 
       <section className="chart-panel">
         <div className="chart-panel__label">Trust score by week</div>

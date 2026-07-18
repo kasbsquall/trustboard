@@ -1,5 +1,10 @@
 # examples
 
-Outputs de muestra generados por TrustBoard: leaderboards semanales, payloads
-de Slack, y snapshots de scores por dominio. Se llenan cuando el pipeline
-produzca sus primeros resultados sobre el datapack `showcase-ecommerce`.
+Sample outputs produced by a real TrustBoard run against the
+`showcase-ecommerce` datapack.
+
+| File | What it is |
+| --- | --- |
+| `leaderboard.json` | The weekly standings, read back from the DataHub graph |
+| `domain_scores.json` | Per-team score with its component breakdown and weakest signal |
+| `slack_message.json` | The Slack Block Kit payload the Herald posts |

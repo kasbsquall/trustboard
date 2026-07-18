@@ -1,9 +1,9 @@
-"""Persistencia del historico de Trust Scores.
+"""Persistence of the Trust Score history.
 
-Guarda un snapshot semanal por dominio para poder mostrar tendencias y
-calcular el "most improved" de la semana. Complementa lo que vive en DataHub
-(el grafo tiene el estado actual; aqui vive la serie temporal para el
-dashboard).
+Stores a weekly snapshot per domain so trends can be shown and the "most
+improved" of the week can be computed. It complements what lives in DataHub
+(the graph holds the current state; the time series for the dashboard lives
+here).
 """
 from __future__ import annotations
 
@@ -25,17 +25,17 @@ def _monday_of(day: date) -> date:
 
 
 def save_weekly_snapshot(rows: list[dict], week_of: date | None = None) -> date:
-    """Guarda (idempotente) el snapshot de la semana para cada dominio.
+    """Saves (idempotently) the week's snapshot for each domain.
 
     rows: [{domain_name, trust_score, assertions_passing_pct, freshness_score,
             documentation_score, rank_this_week, domain_urn, written_to_datahub}]
-    Re-ejecutar en la misma semana actualiza los valores en vez de duplicar.
+    Re-running within the same week updates the values instead of duplicating.
     """
     init_db()
     week = _monday_of(week_of or date.today())
 
     with SessionLocal() as session:
-        # rank de la semana anterior por dominio, para el delta.
+        # previous week's rank per domain, for the delta.
         prev_week = week - timedelta(days=7)
         prev_ranks = _ranks_for_week(session, prev_week)
 
@@ -64,10 +64,10 @@ def save_weekly_snapshot(rows: list[dict], week_of: date | None = None) -> date:
 
 
 def load_seed_if_empty() -> int:
-    """Puebla la DB desde seed_data.json si esta vacia (deploy sin DataHub).
+    """Populates the DB from seed_data.json if it is empty (deploy without DataHub).
 
-    Permite que el dashboard corra en un servidor donde no hay DataHub: el
-    historico ya calculado viaja como JSON versionado y se carga al arrancar.
+    Lets the dashboard run on a server where DataHub is not available: the
+    already-computed history travels as versioned JSON and is loaded at startup.
     """
     init_db()
     with SessionLocal() as session:
@@ -107,7 +107,7 @@ def _ranks_for_week(session: Session, week: date) -> dict[str, int]:
 
 
 def previous_week_scores(week_of: date | None = None) -> dict[str, float]:
-    """{domain_name: trust_score} de la semana anterior (para el 'most improved')."""
+    """{domain_name: trust_score} for the previous week (for the 'most improved')."""
     init_db()
     week = _monday_of(week_of or date.today())
     prev = week - timedelta(days=7)
@@ -117,7 +117,7 @@ def previous_week_scores(week_of: date | None = None) -> dict[str, float]:
 
 
 def current_leaderboard() -> list[dict]:
-    """Ultimo snapshot por dominio, ordenado por score (para el backend/API)."""
+    """Latest snapshot per domain, sorted by score (for the backend/API)."""
     init_db()
     with SessionLocal() as session:
         latest_week = session.scalar(select(DomainScore.week_of).order_by(DomainScore.week_of.desc()))
@@ -132,7 +132,7 @@ def current_leaderboard() -> list[dict]:
 
 
 def domain_history(domain_name: str) -> list[dict]:
-    """Serie temporal de un dominio (para el grafico de tendencia)."""
+    """Time series of a domain (for the trend chart)."""
     init_db()
     with SessionLocal() as session:
         rows = session.scalars(

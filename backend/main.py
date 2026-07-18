@@ -1,8 +1,8 @@
-"""Backend FastAPI de TrustBoard.
+"""TrustBoard FastAPI backend.
 
-Expone el leaderboard actual y el historico de tendencia por dominio para el
-dashboard Next.js. Lee del historico local (repository), que se puebla en cada
-ciclo semanal (run_week.py).
+Exposes the current leaderboard and the per-domain trend history for the
+Next.js dashboard. Reads from the local history (repository), which is populated
+on every weekly cycle (run_week.py).
 """
 from __future__ import annotations
 
@@ -21,8 +21,8 @@ from backend.database.repository import (
 
 app = FastAPI(title="TrustBoard API", version="1.0.0")
 
-# El dashboard es de solo lectura y sin datos sensibles, asi que se permite
-# cualquier origen para simplificar el deploy. Ajustable via env si se requiere.
+# The dashboard is read-only and carries no sensitive data, so any origin is
+# allowed to keep the deploy simple. Adjustable through env if needed.
 _origins = os.getenv("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
@@ -35,7 +35,7 @@ app.add_middleware(
 @app.on_event("startup")
 def _startup() -> None:
     init_db()
-    load_seed_if_empty()  # deploy sin DataHub: carga el historico versionado
+    load_seed_if_empty()  # deploy without DataHub: load the versioned history
 
 
 @app.get("/health")
@@ -45,13 +45,13 @@ def health() -> dict[str, str]:
 
 @app.get("/api/leaderboard")
 def leaderboard() -> dict:
-    """Leaderboard de la semana mas reciente, con rank actual y anterior."""
+    """Leaderboard for the most recent week, with current and previous rank."""
     teams = current_leaderboard()
     previous = previous_week_scores()
     for t in teams:
         prev = previous.get(t["domain_name"])
         t["score_last_week"] = round(prev, 2) if prev is not None else None
-        # Serie corta para el sparkline de cada fila del leaderboard.
+        # Short series for the sparkline on each leaderboard row.
         t["spark"] = [round(p["trust_score"], 2) for p in domain_history(t["domain_name"])][-8:]
     top = teams[0]["domain_name"] if teams else None
     most_improved = _most_improved(teams)
@@ -60,7 +60,7 @@ def leaderboard() -> dict:
 
 @app.get("/api/domains/{domain_name}/history")
 def history(domain_name: str) -> dict:
-    """Serie temporal del Trust Score de un dominio."""
+    """Time series of a domain's Trust Score."""
     rows = domain_history(domain_name)
     if not rows:
         raise HTTPException(status_code=404, detail=f"No history for domain '{domain_name}'")
@@ -68,7 +68,7 @@ def history(domain_name: str) -> dict:
 
 
 def _most_improved(teams: list[dict]) -> dict | None:
-    """El equipo con mayor subida de Trust Score respecto a la semana anterior."""
+    """The team with the largest Trust Score gain over the previous week."""
     previous = previous_week_scores()
     best = None
     for t in teams:

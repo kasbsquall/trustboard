@@ -1,32 +1,31 @@
-"""Logica pura de calculo del Trust Score.
+"""Pure Trust Score computation logic.
 
-Sin dependencias de DataHub ni de I/O: recibe senales ya extraidas y devuelve
-scores. Esto permite empaquetarlo como DataHub Skill reutilizable
-(datahub-skill-contribution/) y testearlo de forma aislada.
+No DataHub or I/O dependencies: it takes already-extracted signals and returns
+scores. That makes it packageable as a reusable DataHub Skill
+(datahub-skill-contribution/) and testable in isolation.
 
-El Trust Score de un dataset combina cuatro componentes (0-100), cada uno con
-un peso. Un componente puede estar AUSENTE (p.ej. un dataset sin tests o sin
-linaje). En ese caso no se cuenta como cero silencioso: se renormalizan los
-pesos sobre los componentes disponibles y se reporta la cobertura, para que el
-score no castigue de forma oculta la falta de una senal.
+A dataset's Trust Score combines four components (0-100), each with a weight. A
+component can be ABSENT (for example a dataset with no tests or no lineage). In
+that case it is not counted as a silent zero: the weights are renormalized over
+the available components and the coverage is reported, so that the score does
+not hide a penalty for a missing signal.
 
-El Trust Score de un dominio (equipo) es el promedio de los scores de sus
-datasets.
+A domain's (team's) Trust Score is the average of its datasets' scores.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-# Pesos del score compuesto. Suman 1.0.
+# Weights of the composite score. They add up to 1.0.
 WEIGHTS = {
-    "quality": 0.35,        # % de tests de calidad que pasan
-    "documentation": 0.25,  # descripcion + docs de campos + glosario
-    "ownership": 0.20,      # el dataset tiene owner asignado
-    "freshness": 0.20,      # que tan reciente es el linaje/actualizacion
+    "quality": 0.35,        # % of quality tests that pass
+    "documentation": 0.25,  # description + field docs + glossary
+    "ownership": 0.20,      # the dataset has an owner assigned
+    "freshness": 0.20,      # how recent the lineage/update is
 }
 
-# Ventana de freshness: a los FRESHNESS_WINDOW_DAYS dias, el score de freshness
-# llega a 0. Un dataset actualizado hoy puntua 100.
+# Freshness window: at FRESHNESS_WINDOW_DAYS days, the freshness score reaches
+# 0. A dataset updated today scores 100.
 FRESHNESS_WINDOW_DAYS = 30.0
 
 SCORE_VERSION = "1.0"
@@ -34,7 +33,7 @@ SCORE_VERSION = "1.0"
 
 @dataclass(frozen=True)
 class DatasetSignals:
-    """Senales crudas extraidas de DataHub para un dataset."""
+    """Raw signals extracted from DataHub for a dataset."""
 
     urn: str
     tests_passing: int = 0
@@ -44,12 +43,12 @@ class DatasetSignals:
     has_field_docs: bool = False
     has_glossary_terms: bool = False
     has_owner: bool = False
-    freshness_days: float | None = None  # None => senal ausente
+    freshness_days: float | None = None  # None => signal absent
 
 
 @dataclass(frozen=True)
 class ComponentBreakdown:
-    """Score por componente de un dataset, con marca de disponibilidad."""
+    """Per-component score of a dataset, flagging availability."""
 
     quality: float | None
     documentation: float
@@ -70,7 +69,7 @@ class DatasetScore:
     urn: str
     score: float
     components: ComponentBreakdown
-    coverage: float  # fraccion de peso cubierto por senales disponibles
+    coverage: float  # fraction of weight covered by the available signals
 
 
 @dataclass(frozen=True)
@@ -78,7 +77,7 @@ class DomainScore:
     domain: str
     score: float
     dataset_count: int
-    # promedio de cada componente sobre los datasets donde estaba disponible
+    # average of each component over the datasets where it was available
     component_averages: dict[str, float] = field(default_factory=dict)
     weakest_component: str | None = None
 
@@ -95,7 +94,7 @@ def _quality(s: DatasetSignals) -> float | None:
 
 
 def _documentation(s: DatasetSignals) -> float:
-    # Siempre disponible: la ausencia de docs es una senal real, no un hueco.
+    # Always available: the absence of docs is a real signal, not a gap.
     return _clamp(
         (50.0 if s.has_description else 0.0)
         + (25.0 if s.has_field_docs else 0.0)
@@ -115,7 +114,7 @@ def _freshness(s: DatasetSignals) -> float | None:
 
 
 def score_dataset(s: DatasetSignals) -> DatasetScore:
-    """Calcula el Trust Score de un dataset renormalizando sobre lo disponible."""
+    """Computes a dataset's Trust Score, renormalizing over what is available."""
     components = {
         "quality": _quality(s),
         "documentation": _documentation(s),
@@ -146,14 +145,14 @@ def score_dataset(s: DatasetSignals) -> DatasetScore:
 
 
 def score_domain(domain: str, signals: list[DatasetSignals]) -> DomainScore:
-    """Agrega los scores de los datasets de un dominio en el Trust Score del equipo."""
+    """Aggregates a domain's dataset scores into the team's Trust Score."""
     if not signals:
         return DomainScore(domain=domain, score=0.0, dataset_count=0)
 
     dataset_scores = [score_dataset(s) for s in signals]
     avg_score = sum(ds.score for ds in dataset_scores) / len(dataset_scores)
 
-    # Promedio por componente sobre los datasets donde estaba disponible.
+    # Per-component average over the datasets where it was available.
     component_averages: dict[str, float] = {}
     for comp in WEIGHTS:
         values = [
@@ -176,7 +175,7 @@ def score_domain(domain: str, signals: list[DatasetSignals]) -> DomainScore:
 
 
 def trust_tier(score: float) -> str:
-    """Traduce un Trust Score a un tier (para tags/badges Gold/Silver/Bronze)."""
+    """Translates a Trust Score into a tier (for Gold/Silver/Bronze tags and badges)."""
     if score >= 80:
         return "gold"
     if score >= 60:
