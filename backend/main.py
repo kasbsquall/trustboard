@@ -6,6 +6,8 @@ ciclo semanal (run_week.py).
 """
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,14 +15,18 @@ from backend.database.repository import (
     current_leaderboard,
     domain_history,
     init_db,
+    load_seed_if_empty,
     previous_week_scores,
 )
 
 app = FastAPI(title="TrustBoard API", version="1.0.0")
 
+# El dashboard es de solo lectura y sin datos sensibles, asi que se permite
+# cualquier origen para simplificar el deploy. Ajustable via env si se requiere.
+_origins = os.getenv("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -29,6 +35,7 @@ app.add_middleware(
 @app.on_event("startup")
 def _startup() -> None:
     init_db()
+    load_seed_if_empty()  # deploy sin DataHub: carga el historico versionado
 
 
 @app.get("/health")

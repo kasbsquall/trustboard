@@ -7,6 +7,8 @@ dashboard).
 """
 from __future__ import annotations
 
+import json
+import os
 from datetime import date, timedelta
 
 from sqlalchemy import select
@@ -14,6 +16,8 @@ from sqlalchemy.orm import Session
 
 from backend.database.connection import SessionLocal, init_db
 from backend.database.models import DomainScore, LeaderboardPost
+
+_SEED_FILE = os.path.join(os.path.dirname(__file__), "seed_data.json")
 
 
 def _monday_of(day: date) -> date:
@@ -56,6 +60,41 @@ def save_weekly_snapshot(rows: list[dict], week_of: date | None = None) -> date:
                 session.add(target)
         session.commit()
     return week
+
+
+def load_seed_if_empty() -> int:
+    """Puebla la DB desde seed_data.json si esta vacia (deploy sin DataHub).
+
+    Permite que el dashboard corra en un servidor donde no hay DataHub: el
+    historico ya calculado viaja como JSON versionado y se carga al arrancar.
+    """
+    init_db()
+    with SessionLocal() as session:
+        if session.scalar(select(DomainScore.id).limit(1)):
+            return 0
+        if not os.path.exists(_SEED_FILE):
+            return 0
+        with open(_SEED_FILE, encoding="utf-8") as fh:
+            data = json.load(fh)
+        count = 0
+        for row in data.get("domain_scores", []):
+            session.add(
+                DomainScore(
+                    domain_name=row["domain_name"],
+                    domain_urn=row.get("domain_urn"),
+                    week_of=date.fromisoformat(row["week_of"]),
+                    trust_score=row["trust_score"],
+                    assertions_passing_pct=row.get("assertions_passing_pct"),
+                    freshness_score=row.get("freshness_score"),
+                    documentation_score=row.get("documentation_score"),
+                    rank_this_week=row.get("rank_this_week"),
+                    rank_last_week=row.get("rank_last_week"),
+                    written_to_datahub=True,
+                )
+            )
+            count += 1
+        session.commit()
+        return count
 
 
 def _ranks_for_week(session: Session, week: date) -> dict[str, int]:

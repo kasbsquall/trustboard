@@ -1,0 +1,38 @@
+# Deploy de produccion del dashboard TrustBoard (backend + frontend).
+# El dashboard es autonomo: no necesita DataHub, sirve el historico versionado.
+#
+# Uso en la VPS (reemplaza la IP/dominio publico):
+#   TRUSTBOARD_API_URL=http://TU_IP:8000 docker compose -f docker-compose.prod.yml up -d --build
+#
+# El dashboard queda en http://TU_IP:3000 y la API en http://TU_IP:8000.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: trustboard-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - trustboard_data:/data
+    environment:
+      CORS_ORIGINS: "*"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # URL PUBLICA del backend (la usa el navegador). Cambiar por la IP/dominio real.
+        NEXT_PUBLIC_API_URL: "${TRUSTBOARD_API_URL:-http://localhost:8000}"
+    container_name: trustboard-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  trustboard_data:

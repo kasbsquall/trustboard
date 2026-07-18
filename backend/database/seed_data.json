@@ -1,0 +1,224 @@
+{
+  "domain_scores": [
+    {
+      "domain_name": "Data Platform Team",
+      "domain_urn": null,
+      "week_of": "2026-06-22",
+      "trust_score": 77.57,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 1,
+      "rank_last_week": null
+    },
+    {
+      "domain_name": "Ecommerce Operations",
+      "domain_urn": null,
+      "week_of": "2026-06-22",
+      "trust_score": 60.31,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 2,
+      "rank_last_week": null
+    },
+    {
+      "domain_name": "Marketing",
+      "domain_urn": null,
+      "week_of": "2026-06-22",
+      "trust_score": 26.04,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 5,
+      "rank_last_week": null
+    },
+    {
+      "domain_name": "E-Commerce",
+      "domain_urn": null,
+      "week_of": "2026-06-22",
+      "trust_score": 37.71,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 4,
+      "rank_last_week": null
+    },
+    {
+      "domain_name": "Engineering Division",
+      "domain_urn": null,
+      "week_of": "2026-06-22",
+      "trust_score": 58.17,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 3,
+      "rank_last_week": null
+    },
+    {
+      "domain_name": "Data Platform Team",
+      "domain_urn": null,
+      "week_of": "2026-06-29",
+      "trust_score": 78.57,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 1,
+      "rank_last_week": 1
+    },
+    {
+      "domain_name": "Ecommerce Operations",
+      "domain_urn": null,
+      "week_of": "2026-06-29",
+      "trust_score": 64.31,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 2,
+      "rank_last_week": 2
+    },
+    {
+      "domain_name": "Marketing",
+      "domain_urn": null,
+      "week_of": "2026-06-29",
+      "trust_score": 30.04,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 5,
+      "rank_last_week": 5
+    },
+    {
+      "domain_name": "Engineering Division",
+      "domain_urn": null,
+      "week_of": "2026-06-29",
+      "trust_score": 55.17,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 3,
+      "rank_last_week": 3
+    },
+    {
+      "domain_name": "E-Commerce",
+      "domain_urn": null,
+      "week_of": "2026-06-29",
+      "trust_score": 39.71,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 4,
+      "rank_last_week": 4
+    },
+    {
+      "domain_name": "Data Platform Team",
+      "domain_urn": null,
+      "week_of": "2026-07-06",
+      "trust_score": 80.07,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 1,
+      "rank_last_week": 1
+    },
+    {
+      "domain_name": "Ecommerce Operations",
+      "domain_urn": null,
+      "week_of": "2026-07-06",
+      "trust_score": 67.81,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 2,
+      "rank_last_week": 2
+    },
+    {
+      "domain_name": "Engineering Division",
+      "domain_urn": null,
+      "week_of": "2026-07-06",
+      "trust_score": 54.17,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 3,
+      "rank_last_week": 3
+    },
+    {
+      "domain_name": "Marketing",
+      "domain_urn": null,
+      "week_of": "2026-07-06",
+      "trust_score": 34.04,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 5,
+      "rank_last_week": 5
+    },
+    {
+      "domain_name": "E-Commerce",
+      "domain_urn": null,
+      "week_of": "2026-07-06",
+      "trust_score": 41.21,
+      "assertions_passing_pct": null,
+      "freshness_score": null,
+      "documentation_score": null,
+      "rank_this_week": 4,
+      "rank_last_week": 4
+    },
+    {
+      "domain_name": "Data Platform Team",
+      "domain_urn": "urn:li:domain:b2fd91.1caf2b7c-ca73-4708-bdec-6687d78cab0e",
+      "week_of": "2026-07-13",
+      "trust_score": 81.57,
+      "assertions_passing_pct": 91.67,
+      "freshness_score": 0.0,
+      "documentation_score": 84.26,
+      "rank_this_week": 1,
+      "rank_last_week": 1
+    },
+    {
+      "domain_name": "Ecommerce Operations",
+      "domain_urn": "urn:li:domain:b2fd91.91994180-93ee-43f7-9c97-5e74a4a43fbd",
+      "week_of": "2026-07-13",
+      "trust_score": 70.31,
+      "assertions_passing_pct": 75.0,
+      "freshness_score": null,
+      "documentation_score": 66.67,
+      "rank_this_week": 2,
+      "rank_last_week": 2
+    },
+    {
+      "domain_name": "Engineering Division",
+      "domain_urn": "urn:li:domain:b2fd91.ce125416-344c-4db4-9f07-f7086a851606",
+      "week_of": "2026-07-13",
+      "trust_score": 51.17,
+      "assertions_passing_pct": 50.0,
+      "freshness_score": null,
+      "documentation_score": 43.75,
+      "rank_this_week": 3,
+      "rank_last_week": 3
+    },
+    {
+      "domain_name": "E-Commerce",
+      "domain_urn": "urn:li:domain:b2fd91.d4f24004-fb54-4e3c-8dea-2b7e209230b0",
+      "week_of": "2026-07-13",
+      "trust_score": 42.71,
+      "assertions_passing_pct": 50.0,
+      "freshness_score": 0.0,
+      "documentation_score": 54.17,
+      "rank_this_week": 4,
+      "rank_last_week": 4
+    },
+    {
+      "domain_name": "Marketing",
+      "domain_urn": "urn:li:domain:b2fd91.e0f246dc-e7a5-40ed-9441-1e397ed6e2ad",
+      "week_of": "2026-07-13",
+      "trust_score": 40.04,
+      "assertions_passing_pct": 25.0,
+      "freshness_score": null,
+      "documentation_score": 53.12,
+      "rank_this_week": 5,
+      "rank_last_week": 5
+    }
+  ]
+}
