@@ -11,6 +11,7 @@ export interface Team {
   rank_this_week: number | null;
   rank_last_week: number | null;
   score_last_week: number | null;
+  spark: number[];
 }
 
 export interface LeaderboardResponse {

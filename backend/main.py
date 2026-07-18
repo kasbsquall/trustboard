@@ -51,6 +51,8 @@ def leaderboard() -> dict:
     for t in teams:
         prev = previous.get(t["domain_name"])
         t["score_last_week"] = round(prev, 2) if prev is not None else None
+        # Serie corta para el sparkline de cada fila del leaderboard.
+        t["spark"] = [round(p["trust_score"], 2) for p in domain_history(t["domain_name"])][-8:]
     top = teams[0]["domain_name"] if teams else None
     most_improved = _most_improved(teams)
     return {"teams": teams, "team_of_the_week": top, "most_improved": most_improved}
