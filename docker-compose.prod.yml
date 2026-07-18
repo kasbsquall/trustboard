@@ -14,7 +14,7 @@ services:
     container_name: trustboard-backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - trustboard_data:/data
     environment:
@@ -30,7 +30,7 @@ services:
     container_name: trustboard-frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
       - backend
 
