@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ArrowLeft } from "@phosphor-icons/react";
 import NumberFlow from "@number-flow/react";
 import { TrendChart } from "@/components/TrendChart";
 import { getHistory, getLeaderboard, tierOf, type HistoryPoint, type Team } from "@/lib/api";
@@ -31,7 +32,7 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
   if (state === "error") {
     return (
       <main className="shell">
-        <Link href="/" className="back">Back to the league</Link>
+        <Link href="/" className="back"><ArrowLeft size={13} weight="light" /> Back to the league</Link>
         <p className="empty-note">No data recorded for this team.</p>
       </main>
     );
@@ -42,7 +43,7 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
 
   return (
     <main className="shell">
-      <Link href="/" className="back">Back to the league</Link>
+      <Link href="/" className="back"><ArrowLeft size={13} weight="light" /> Back to the league</Link>
 
       <header className={`detail__head tier-${tier}`}>
         <div>

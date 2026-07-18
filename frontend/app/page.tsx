@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TrendDown, TrendUp } from "@phosphor-icons/react/dist/ssr";
 import { Logo } from "@/components/Logo";
 import { Sparkline } from "@/components/Sparkline";
 import { getLeaderboard, tierOf, type Team } from "@/lib/api";
@@ -115,7 +116,11 @@ export default async function Home() {
                 />
               </div>
               <div className="row__score tnum">{team.trust_score.toFixed(1)}</div>
-              <div className={`row__delta tnum ${delta.cls}`}>{delta.label}</div>
+              <div className={`row__delta tnum ${delta.cls}`}>
+                {delta.cls === "delta-up" && <TrendUp size={13} weight="light" />}
+                {delta.cls === "delta-down" && <TrendDown size={13} weight="light" />}
+                {delta.label}
+              </div>
               <div className="tier-tag">{tier.replace("-", " ")}</div>
             </Link>
           );

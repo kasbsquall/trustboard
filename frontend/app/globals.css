@@ -336,7 +336,10 @@ a {
 }
 
 .row__delta {
-  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
   font-size: var(--step--1);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -407,7 +410,9 @@ a {
    ============================================================ */
 
 .back {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--step--1);
   color: var(--text-faint);
   margin-bottom: var(--ma-lg);
