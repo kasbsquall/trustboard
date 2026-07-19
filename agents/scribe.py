@@ -6,7 +6,7 @@ by people and by other agents:
 
   1. domain-level structured property (trustScore + trustTier), queryable and
      filterable in the DataHub UI.
-  2. tier tag (Trust: Gold/Silver/Bronze/At-Risk) on the domain, with
+  2. tier tag (Trust: Gold/Silver/Bronze/At-Risk) on every dataset, with
      remove-before-add so the old tier does not stay stuck.
   3. domain description with the per-component breakdown, inside an idempotent
      delimited block.
@@ -27,7 +27,7 @@ from datahub.metadata.schema_classes import (
     TagPropertiesClass,
 )
 
-from agents.auditor import AuditedDomain, DomainInfo, audit_all_domains
+from agents.auditor import AuditedDomain, audit_all_domains
 from agents.incidents import remediate
 from mcp_client.datahub_connection import execute_graphql_retry, get_graph
 from scoring.trust_score import DomainScore, trust_tier
@@ -136,9 +136,7 @@ def _render_scorecard(score: DomainScore, tier: str) -> str:
 
 def _write_description(graph, domain_urn: str, name: str, score: DomainScore, tier: str) -> None:
     """Updates the domain description with the scorecard inside a delimited block."""
-    from datahub.metadata.schema_classes import DomainPropertiesClass as _DP
-
-    current = graph.get_aspect(domain_urn, _DP)
+    current = graph.get_aspect(domain_urn, DomainPropertiesClass)
     base_desc = current.description if current and current.description else ""
     # Strip any previous TrustBoard block.
     if _DESC_START in base_desc and _DESC_END in base_desc:
@@ -197,7 +195,8 @@ def write_all(graph=None, results: list[AuditedDomain] | None = None) -> list[Au
     report = remediate(graph, all_dataset_scores)
     print(
         f"\nIncidents: {report.raised} raised, {report.resolved} resolved, "
-        f"{report.unchanged} unchanged."
+        f"{report.unchanged} unchanged"
+        + (f", {report.failed} FAILED." if report.failed else ".")
     )
     return results
 

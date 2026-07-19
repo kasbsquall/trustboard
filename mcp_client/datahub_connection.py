@@ -1,14 +1,10 @@
 """DataHub connection (Step 3).
 
-Two paths, both pointing at the GMS on DATAHUB_GMS_URL:
-
-1. acryl-datahub SDK through DataHubGraph: reading aspects (ownership,
-   schemaMetadata, structuredProperties, testResults) and executing GraphQL
-   (searches, upsertStructuredProperties). This is the path the Auditor and the
-   Scribe use.
-
-2. Agent Context Kit: exposes the DataHub tools as LangChain tools for a
-   conversational agent (build_langchain_tools).
+The acryl-datahub SDK through DataHubGraph, pointing at the GMS on
+DATAHUB_GMS_URL: reading aspects (ownership, schemaMetadata,
+structuredProperties, testResults) and executing GraphQL (searches,
+upsertStructuredProperties, incidents). This is the path the Auditor, the
+Scribe and the Gatekeeper all use.
 """
 from __future__ import annotations
 
@@ -22,14 +18,28 @@ from config import get_settings
 
 @lru_cache
 def get_graph() -> DataHubGraph:
-    """Returns a DataHubGraph authenticated against the local GMS (cached)."""
+    """Returns a DataHubGraph authenticated against the GMS (cached).
+
+    An unreachable GMS is the most likely first failure for anyone running
+    this, so it exits with the URL it tried and what to start, rather than
+    with a connection traceback from deep inside the SDK.
+    """
     settings = get_settings()
-    return DataHubGraph(
+    graph = DataHubGraph(
         DatahubClientConfig(
             server=settings.datahub_gms_url,
             token=settings.datahub_gms_token or None,
         )
     )
+    try:
+        graph.test_connection()
+    except Exception as err:  # noqa: BLE001
+        raise SystemExit(
+            f"Cannot reach DataHub GMS at {settings.datahub_gms_url}. "
+            "Start it with `datahub docker quickstart`, then check the URL and "
+            f"token in your .env. ({type(err).__name__}: {str(err)[:160]})"
+        ) from None
+    return graph
 
 
 def execute_graphql_retry(graph, query: str, variables: dict | None = None, retries: int = 4):

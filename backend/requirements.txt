@@ -1,6 +1,6 @@
-# Dependencias minimas del backend para el deploy del dashboard.
-# NO incluye acryl-datahub ni langchain: el backend solo sirve el historico
-# desde SQLite; los agentes que hablan con DataHub corren aparte, en local.
+# Minimal backend dependencies for the dashboard deploy.
+# acryl-datahub is deliberately absent: the backend only serves the history
+# from SQLite. The agents that talk to DataHub run separately.
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 sqlalchemy==2.0.36

@@ -15,6 +15,9 @@ import NumberFlow from "@number-flow/react";
 import { TrendChart } from "@/components/TrendChart";
 import { getHistory, getLeaderboard, ordinal, tierOf, type HistoryPoint, type Team } from "@/lib/api";
 
+/** An unranked neighbour has no position to show; "0th" is not one. */
+const rankLabel = (t: Team) => (t.rank_this_week ? `${ordinal(t.rank_this_week)} ` : "");
+
 const SIGNALS = [
   { key: "assertions_passing_pct", label: "Quality", weight: "35% of score", Icon: SealCheck },
   { key: "documentation_score", label: "Documentation", weight: "25% of score", Icon: BookOpen },
@@ -219,10 +222,10 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
           {neighbours.prev ? (
             <Link
               href={`/domain/${encodeURIComponent(neighbours.prev.domain_name)}`}
-              aria-label={`Ranked above: ${ordinal(neighbours.prev.rank_this_week ?? 0)} ${neighbours.prev.domain_name}`}
+              aria-label={`Ranked above: ${rankLabel(neighbours.prev)}${neighbours.prev.domain_name}`}
             >
               <ArrowLeft size={13} weight="light" aria-hidden="true" />
-              {ordinal(neighbours.prev.rank_this_week ?? 0)} {neighbours.prev.domain_name}
+              {rankLabel(neighbours.prev)}{neighbours.prev.domain_name}
             </Link>
           ) : (
             <span />
@@ -231,9 +234,9 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
             <Link
               href={`/domain/${encodeURIComponent(neighbours.next.domain_name)}`}
               className="pager__next"
-              aria-label={`Ranked below: ${ordinal(neighbours.next.rank_this_week ?? 0)} ${neighbours.next.domain_name}`}
+              aria-label={`Ranked below: ${rankLabel(neighbours.next)}${neighbours.next.domain_name}`}
             >
-              {ordinal(neighbours.next.rank_this_week ?? 0)} {neighbours.next.domain_name}
+              {rankLabel(neighbours.next)}{neighbours.next.domain_name}
               <ArrowLeft size={13} weight="light" aria-hidden="true" style={{ transform: "rotate(180deg)" }} />
             </Link>
           )}

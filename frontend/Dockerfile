@@ -1,6 +1,6 @@
-# Frontend del dashboard TrustBoard (Next.js). Construir desde frontend/:
+# TrustBoard dashboard frontend (Next.js). Build from frontend/:
 #   docker build -f frontend/Dockerfile -t trustboard-frontend ./frontend
-# La URL publica del backend se pasa en build time (el cliente la necesita).
+# The public backend URL is baked in at build time; the browser needs it.
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -10,7 +10,7 @@ RUN npm ci
 COPY . .
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-# Limita el heap de Node para no agotar la RAM de un host compartido con otras apps.
+# Cap Node's heap so a build does not exhaust the RAM of a shared host.
 ENV NODE_OPTIONS=--max-old-space-size=768
 RUN npm run build
 

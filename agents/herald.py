@@ -31,7 +31,7 @@ def _delta_label(name: str, score: float, previous: dict[str, float] | None) -> 
     if abs(diff) < 0.05:
         return "steady"
     arrow = "up" if diff > 0 else "down"
-    return f"{arrow} {abs(diff):.1f}"
+    return f"{arrow} {abs(diff):.1f} pts"
 
 
 def build_message(teams: list[dict], previous: dict[str, float] | None = None) -> dict:
@@ -53,7 +53,7 @@ def build_message(teams: list[dict], previous: dict[str, float] | None = None) -
 
     blocks: list[dict] = [
         {"type": "header", "text": {"type": "plain_text", "text": "TrustBoard Weekly"}},
-        {"type": "context", "elements": [{"type": "mrkdwn", "text": "Trust Score = quality + documentation + ownership + freshness, computed from DataHub and written back to the graph."}]},
+        {"type": "context", "elements": [{"type": "mrkdwn", "text": "Trust Score = 35% quality + 25% documentation + 20% ownership + 20% freshness, read from DataHub and written back to the graph. Tiers: gold 80+, silver 60+, bronze 40+, at-risk below 40."}]},
         {"type": "divider"},
     ]
 
@@ -68,7 +68,7 @@ def build_message(teams: list[dict], previous: dict[str, float] | None = None) -
     blocks.append({"type": "divider"})
     footer = f"*Team of the week:* {top['name']} ({top['trust_score']:.1f}, {(top.get('trust_tier') or '').upper()})"
     if most_improved:
-        footer += f"\n*Most improved:* {most_improved[0]} (+{most_improved[1]:.1f} this week)"
+        footer += f"\n*Most improved:* {most_improved[0]} (up {most_improved[1]:.1f} points this week)"
     blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": footer}})
 
     fallback = f"TrustBoard Weekly. Team of the week: {top['name']} ({top['trust_score']:.1f})"

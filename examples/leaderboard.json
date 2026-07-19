@@ -4,95 +4,95 @@
       "domain_name": "Data Platform Team",
       "domain_urn": "urn:li:domain:b2fd91.1caf2b7c-ca73-4708-bdec-6687d78cab0e",
       "week_of": "2026-07-13",
-      "trust_score": 88.75,
+      "trust_score": 85.84,
       "assertions_passing_pct": 91.67,
-      "freshness_score": 75.68,
-      "documentation_score": 86.11,
-      "ownership_score": 100.0,
+      "freshness_score": 76.65,
+      "documentation_score": 79.63,
+      "ownership_score": 92.59,
       "rank_this_week": 1,
       "rank_last_week": 1,
-      "score_last_week": 87.25,
+      "score_last_week": 84.34,
       "spark": [
-        84.75,
-        85.75,
-        87.25,
-        88.75
+        81.84,
+        82.84,
+        84.34,
+        85.84
       ]
     },
     {
       "domain_name": "Ecommerce Operations",
       "domain_urn": "urn:li:domain:b2fd91.91994180-93ee-43f7-9c97-5e74a4a43fbd",
       "week_of": "2026-07-13",
-      "trust_score": 73.51,
+      "trust_score": 66.17,
       "assertions_passing_pct": 75.0,
-      "freshness_score": 59.23,
-      "documentation_score": 75.0,
-      "ownership_score": 83.33,
+      "freshness_score": 59.99,
+      "documentation_score": 58.33,
+      "ownership_score": 66.67,
       "rank_this_week": 2,
       "rank_last_week": 2,
-      "score_last_week": 71.01,
+      "score_last_week": 63.67,
       "spark": [
-        63.51,
-        67.51,
-        71.01,
-        73.51
+        56.17,
+        60.17,
+        63.67,
+        66.17
       ]
     },
     {
       "domain_name": "E-Commerce",
       "domain_urn": "urn:li:domain:b2fd91.d4f24004-fb54-4e3c-8dea-2b7e209230b0",
       "week_of": "2026-07-13",
-      "trust_score": 63.91,
+      "trust_score": 50.08,
       "assertions_passing_pct": 50.0,
-      "freshness_score": 51.82,
-      "documentation_score": 70.83,
-      "ownership_score": 91.67,
+      "freshness_score": 52.49,
+      "documentation_score": 41.67,
+      "ownership_score": 58.33,
       "rank_this_week": 3,
       "rank_last_week": 3,
-      "score_last_week": 62.41,
+      "score_last_week": 48.58,
       "spark": [
-        58.91,
-        60.91,
-        62.41,
-        63.91
+        45.08,
+        47.08,
+        48.58,
+        50.08
       ]
     },
     {
       "domain_name": "Engineering Division",
       "domain_urn": "urn:li:domain:b2fd91.ce125416-344c-4db4-9f07-f7086a851606",
       "week_of": "2026-07-13",
-      "trust_score": 53.23,
+      "trust_score": 38.78,
       "assertions_passing_pct": 50.0,
-      "freshness_score": 33.32,
-      "documentation_score": 56.25,
-      "ownership_score": 75.0,
+      "freshness_score": 33.74,
+      "documentation_score": 28.12,
+      "ownership_score": 37.5,
       "rank_this_week": 4,
       "rank_last_week": 4,
-      "score_last_week": 56.23,
+      "score_last_week": 41.78,
       "spark": [
-        60.23,
-        57.23,
-        56.23,
-        53.23
+        45.78,
+        42.78,
+        41.78,
+        38.78
       ]
     },
     {
       "domain_name": "Marketing",
       "domain_urn": "urn:li:domain:b2fd91.e0f246dc-e7a5-40ed-9441-1e397ed6e2ad",
       "week_of": "2026-07-13",
-      "trust_score": 42.1,
+      "trust_score": 26.06,
       "assertions_passing_pct": 25.0,
-      "freshness_score": 22.21,
-      "documentation_score": 65.62,
-      "ownership_score": 62.5,
+      "freshness_score": 22.49,
+      "documentation_score": 31.25,
+      "ownership_score": 25.0,
       "rank_this_week": 5,
       "rank_last_week": 5,
-      "score_last_week": 36.1,
+      "score_last_week": 20.06,
       "spark": [
-        28.1,
-        32.1,
-        36.1,
-        42.1
+        12.06,
+        16.06,
+        20.06,
+        26.06
       ]
     }
   ],
@@ -100,6 +100,6 @@
   "most_improved": {
     "domain_name": "Marketing",
     "score_delta": 6.0,
-    "trust_score": 42.1
+    "trust_score": 26.06
   }
 }

@@ -1,5 +1,5 @@
-# Backend del dashboard TrustBoard (FastAPI). Sirve el historico desde SQLite;
-# no necesita DataHub. Construir desde la raiz del repo:
+# TrustBoard dashboard backend (FastAPI). Serves the history from SQLite and
+# does not need DataHub. Build from the repo root:
 #   docker build -f backend/Dockerfile -t trustboard-backend .
 FROM python:3.11-slim
 

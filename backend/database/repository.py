@@ -107,9 +107,19 @@ def _ranks_for_week(session: Session, week: date) -> dict[str, int]:
 
 
 def previous_week_scores(week_of: date | None = None) -> dict[str, float]:
-    """{domain_name: trust_score} for the previous week (for the 'most improved')."""
+    """{domain_name: trust_score} for the week before the one being displayed.
+
+    The reference week defaults to the most recent snapshot in the history, not
+    to today. Anchoring on today means that the moment the calendar moves past
+    the last run, every comparison resolves to an empty week and the dashboard
+    renders stale scores as if they were current, with no change at all.
+    """
     init_db()
-    week = _monday_of(week_of or date.today())
+    with SessionLocal() as session:
+        latest = session.scalar(select(DomainScore.week_of).order_by(DomainScore.week_of.desc()))
+    if week_of is None and latest is None:
+        return {}
+    week = _monday_of(week_of) if week_of is not None else latest
     prev = week - timedelta(days=7)
     with SessionLocal() as session:
         rows = session.scalars(select(DomainScore).where(DomainScore.week_of == prev)).all()

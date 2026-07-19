@@ -49,14 +49,17 @@ from mcp_client.datahub_connection import get_graph  # noqa: E402
 
 ACTOR = "urn:li:corpuser:datahub"
 
-# Real datapack domains (urn -> name) confirmed in the environment.
-DOMAINS = {
-    "Data Platform Team": "urn:li:domain:b2fd91.1caf2b7c-ca73-4708-bdec-6687d78cab0e",
-    "Ecommerce Operations": "urn:li:domain:b2fd91.91994180-93ee-43f7-9c97-5e74a4a43fbd",
-    "E-Commerce": "urn:li:domain:b2fd91.d4f24004-fb54-4e3c-8dea-2b7e209230b0",
-    "Engineering Division": "urn:li:domain:b2fd91.ce125416-344c-4db4-9f07-f7086a851606",
-    "Marketing": "urn:li:domain:b2fd91.e0f246dc-e7a5-40ed-9441-1e397ed6e2ad",
-}
+# The five teams the demo needs. Their URNs carry a UUID the datapack mints on
+# load, so they are resolved by name at runtime rather than pinned here: a URN
+# copied from one machine points at nothing on the next, and the failure would
+# be silent, with every dataset assigned to a domain that does not exist.
+TEAM_NAMES = [
+    "Data Platform Team",
+    "Ecommerce Operations",
+    "E-Commerce",
+    "Engineering Division",
+    "Marketing",
+]
 
 # Each team owns its own platform stack (realistic assignment).
 PLATFORM_TO_TEAM = {
@@ -128,10 +131,42 @@ def list_dataset_urns(graph) -> list[str]:
         "{ searchResults { entity { urn } } } }"
     )
     results = graph.execute_graphql(query)["search"]["searchResults"]
-    return [r["entity"]["urn"] for r in results]
+    # Sorted, because search returns results by relevance and that ranking
+    # shifts once the Scribe writes tags. An unstable order would hand each
+    # dataset a different index on the next run, and with it a different set
+    # of signals, so the scores would drift every time this is re-run.
+    return sorted(r["entity"]["urn"] for r in results)
 
 
-def seed_dataset(graph, dataset_urn: str, team: str, idx: int) -> None:
+def resolve_domains(graph) -> dict[str, str]:
+    """Maps each team name to the domain URN this DataHub instance minted.
+
+    Fails loudly and by name when a domain is missing, because the alternative
+    is assigning every dataset to a dangling URN and watching the Auditor find
+    nothing to score with no explanation.
+    """
+    query = (
+        '{ search(input: {type: DOMAIN, query: "*", start: 0, count: 100}) '
+        "{ searchResults { entity { urn ... on Domain { properties { name } } } } } }"
+    )
+    results = graph.execute_graphql(query)["search"]["searchResults"]
+    by_name = {
+        (r["entity"].get("properties") or {}).get("name"): r["entity"]["urn"]
+        for r in results
+    }
+    resolved = {name: by_name[name] for name in TEAM_NAMES if name in by_name}
+    missing = [name for name in TEAM_NAMES if name not in resolved]
+    if missing:
+        raise SystemExit(
+            "These domains are not in DataHub: "
+            + ", ".join(missing)
+            + ".\nLoad the datapack first: "
+            "datahub datapack load showcase-ecommerce --force"
+        )
+    return resolved
+
+
+def seed_dataset(graph, domains: dict[str, str], dataset_urn: str, team: str, idx: int) -> None:
     """Emits a dataset's aspects according to its team's profile.
 
     idx walks the team's datasets and decides deterministically (no randomness)
@@ -142,39 +177,47 @@ def seed_dataset(graph, dataset_urn: str, team: str, idx: int) -> None:
         graph.emit_mcp(MetadataChangeProposalWrapper(entityUrn=dataset_urn, aspect=aspect))
 
     # 1. Domain (team).
-    emit(DomainsClass(domains=[DOMAINS[team]]))
+    emit(DomainsClass(domains=[domains[team]]))
 
     # Deterministic threshold: the i-th dataset "falls inside" fraction f if
     # (i mod 100)/100 < f. Spreads the signals in a stable way.
     def within(fraction: float) -> bool:
         return ((idx * 37) % 100) / 100.0 < fraction
 
+    # 2, 3, 4. Ownership, documentation and glossary terms. The absent case is
+    # emitted as an empty aspect rather than skipped: emitting replaces, but
+    # skipping leaves whatever a previous run wrote in place, so signals would
+    # only ever accumulate and every re-run would raise the scores.
+
     # 2. Ownership.
-    if within(profile["own"]):
-        owner = OWNERS[idx % len(OWNERS)]
-        emit(OwnershipClass(owners=[OwnerClass(owner=owner, type=OwnershipTypeClass.DATAOWNER)]))
+    owners = (
+        [OwnerClass(owner=OWNERS[idx % len(OWNERS)], type=OwnershipTypeClass.DATAOWNER)]
+        if within(profile["own"])
+        else []
+    )
+    emit(OwnershipClass(owners=owners))
 
     # 3. Documentation.
-    if within(profile["doc"]):
-        emit(
-            EditableDatasetPropertiesClass(
-                created=_audit(),
-                lastModified=_audit(),
-                description=(
-                    f"Owned by {team}. Curated dataset with documented schema, "
-                    "lineage and business context maintained by the team."
-                ),
+    emit(
+        EditableDatasetPropertiesClass(
+            created=_audit(),
+            lastModified=_audit(),
+            description=(
+                f"Owned by {team}. Curated dataset with documented schema, "
+                "lineage and business context maintained by the team."
             )
+            if within(profile["doc"])
+            else "",
         )
+    )
 
     # 4. Glossary terms.
-    if within(profile["terms"]):
-        emit(
-            GlossaryTermsClass(
-                terms=[GlossaryTermAssociationClass(urn=TERMS[idx % len(TERMS)])],
-                auditStamp=_audit(),
-            )
-        )
+    terms = (
+        [GlossaryTermAssociationClass(urn=TERMS[idx % len(TERMS)])]
+        if within(profile["terms"])
+        else []
+    )
+    emit(GlossaryTermsClass(terms=terms, auditStamp=_audit()))
 
     # 5. Freshness. The existing aspect is read back and re-emitted with only
     # lastModified changed, so the name, description and custom properties that
@@ -210,11 +253,12 @@ def seed_dataset(graph, dataset_urn: str, team: str, idx: int) -> None:
 
 def main() -> None:
     graph = get_graph()
+    domains = resolve_domains(graph)
     urns = list_dataset_urns(graph)
     print(f"Datasets found: {len(urns)}")
 
-    per_team_idx: dict[str, int] = {t: 0 for t in DOMAINS}
-    assigned = {t: 0 for t in DOMAINS}
+    per_team_idx: dict[str, int] = {t: 0 for t in TEAM_NAMES}
+    assigned = {t: 0 for t in TEAM_NAMES}
     skipped = 0
 
     for urn in urns:
@@ -223,14 +267,17 @@ def main() -> None:
         if team is None:
             skipped += 1
             continue
-        seed_dataset(graph, urn, team, per_team_idx[team])
+        seed_dataset(graph, domains, urn, team, per_team_idx[team])
         per_team_idx[team] += 1
         assigned[team] += 1
 
     print("\nDatasets assigned per team:")
     for team, n in assigned.items():
         p = PROFILES[team]
-        print(f"  {team}: {n} datasets  (profile doc={p['doc']:.0%} own={p['own']:.0%} tests_pass={p['pass_ratio']:.0%})")
+        print(
+            f"  {team}: {n} datasets  (profile doc={p['doc']:.0%} own={p['own']:.0%} "
+            f"tests_pass={p['pass_ratio']:.0%} fresh={p['fresh']:.0%})"
+        )
     if skipped:
         print(f"  (no recognized platform: {skipped})")
     print("\nOK: demo scenario seeded into DataHub.")

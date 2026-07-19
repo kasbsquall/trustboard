@@ -58,9 +58,8 @@ def evaluate(dataset_urn: str, task: str, min_tier: str = "silver", graph=None) 
         dataset_urn=dataset_urn,
         allowed=False,
         reason=(
-            f"Refusing to use this dataset: {verdict['reason']} "
-            f"(tier '{verdict.get('trust_tier')}'). Using untrusted data would "
-            "propagate quality issues downstream."
+            f"Refusing to use this dataset: {verdict['reason']}. "
+            "Using untrusted data would propagate quality issues downstream."
         ),
         alternative=(
             f"Prefer a dataset owned by '{best_team}', the highest-trust team this week."

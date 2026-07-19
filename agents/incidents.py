@@ -43,6 +43,7 @@ class IncidentReport:
     raised: int = 0
     resolved: int = 0
     unchanged: int = 0
+    failed: int = 0
 
 
 def _short_name(dataset_urn: str) -> str:
@@ -58,10 +59,14 @@ def _weakest(ds: DatasetScore) -> str:
 
 
 def _active_incidents(graph, dataset_urn: str) -> list[str]:
-    try:
-        res = execute_graphql_retry(graph, _QUERY_INCIDENTS, variables={"urn": dataset_urn})
-    except Exception:  # noqa: BLE001
-        return []
+    """Returns the URNs of this dataset's open TrustBoard incidents.
+
+    The failure is deliberately not swallowed. Returning an empty list on a
+    failed query reads as "nothing is open", so the next step raises a
+    duplicate incident on a dataset that already has one, and it does that
+    again every week. Idempotency here depends on knowing what is open.
+    """
+    res = execute_graphql_retry(graph, _QUERY_INCIDENTS, variables={"urn": dataset_urn})
     entity = res.get("entity") or {}
     incidents = ((entity.get("incidents") or {}).get("incidents")) or []
     return [
@@ -73,11 +78,20 @@ def _active_incidents(graph, dataset_urn: str) -> list[str]:
 
 
 def remediate(graph, dataset_scores: list[DatasetScore], threshold: float = AT_RISK_THRESHOLD) -> IncidentReport:
-    """Raises/resolves incidents according to each dataset's Trust Score."""
-    raised = resolved = unchanged = 0
+    """Raises/resolves incidents according to each dataset's Trust Score.
+
+    Failures are counted apart from no-ops. Folding them into 'unchanged'
+    turns a run where every call errored into a summary that reads exactly
+    like a run where there was nothing to do.
+    """
+    raised = resolved = unchanged = failed = 0
 
     for ds in dataset_scores:
-        active = _active_incidents(graph, ds.urn)
+        try:
+            active = _active_incidents(graph, ds.urn)
+        except Exception:  # noqa: BLE001
+            failed += 1
+            continue
         is_toxic = ds.score < threshold
 
         if is_toxic and not active:
@@ -91,7 +105,7 @@ def remediate(graph, dataset_scores: list[DatasetScore], threshold: float = AT_R
                 execute_graphql_retry(graph, _RAISE, variables={"urn": ds.urn, "title": title, "desc": desc})
                 raised += 1
             except Exception:  # noqa: BLE001
-                unchanged += 1
+                failed += 1
         elif not is_toxic and active:
             for inc_urn in active:
                 try:
@@ -101,8 +115,8 @@ def remediate(graph, dataset_scores: list[DatasetScore], threshold: float = AT_R
                     )
                     resolved += 1
                 except Exception:  # noqa: BLE001
-                    unchanged += 1
+                    failed += 1
         else:
             unchanged += 1
 
-    return IncidentReport(raised=raised, resolved=resolved, unchanged=unchanged)
+    return IncidentReport(raised=raised, resolved=resolved, unchanged=unchanged, failed=failed)

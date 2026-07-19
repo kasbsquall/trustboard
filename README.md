@@ -29,7 +29,7 @@ Three specialized agents, plus a fourth that proves the point:
    documentation, ownership and update freshness. Missing signals are renormalized, never counted
    as silent zeros.
 2. **The Scribe** writes the score *back to the graph*: a structured property on each domain, a
-   scorecard in the domain description, a Gold/Silver/Bronze tier tag on every dataset, and an
+   scorecard in the domain description, a Gold/Silver/Bronze/At-Risk tier tag on every dataset, and an
    **operational incident** opened (and later resolved) on datasets that fall below the trust
    threshold. Every write is idempotent.
 3. **The Herald** builds the weekly ranking against last week and posts it to Slack as a sports
@@ -51,7 +51,7 @@ run you can open DataHub and see, on each domain and dataset:
 | `io.trustboard.trustScore` (0-100) | Structured property on the domain | Anyone filtering or querying the catalog |
 | `io.trustboard.trustTier` (gold/silver/bronze/at-risk) | Structured property on the domain | Governance dashboards, search facets |
 | Scorecard with component breakdown | Domain description (idempotent block) | Any human opening the asset |
-| `Trust: Gold/Silver/Bronze` tag | Global tag on each dataset | "Show me all Bronze datasets" in search |
+| `Trust: Gold/Silver/Bronze/At-Risk` tag | Global tag on each dataset | "Show me every at-risk dataset" in search |
 | Operational incident | Incident on low-trust datasets | On-call, data owners, the DataHub UI |
 | `get_trust_score`, `is_trustworthy`, `get_team_leaderboard` | Custom MCP tools | Any other AI agent in the ecosystem |
 
@@ -113,6 +113,7 @@ cp .env.example .env          # paste your DATAHUB_GMS_TOKEN and SLACK_WEBHOOK_U
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
+python scripts/check_connection.py  # confirms GMS is reachable and the token works
 python scripts/seed_demo.py       # prepares the demo scenario (see the note below)
 python scripts/seed_history.py    # seeds a few weeks of history for the trend charts
 python run_week.py                # runs the full weekly cycle: audit, write-back, snapshot, publish
