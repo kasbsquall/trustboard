@@ -1,64 +1,57 @@
 [
   {
-    "team": "Data Platform Team",
-    "score": 81.57,
-    "tier": "gold",
-    "components": {
-      "quality": 91.67,
-      "documentation": 84.26,
-      "ownership": 96.3,
-      "freshness": 0.0
-    },
-    "datasets": 27,
-    "weakest": "freshness"
+    "domain_name": "Data Platform Team",
+    "domain_urn": "urn:li:domain:b2fd91.1caf2b7c-ca73-4708-bdec-6687d78cab0e",
+    "week_of": "2026-07-13",
+    "trust_score": 88.75,
+    "quality": 91.67,
+    "documentation": 86.11,
+    "ownership": 100.0,
+    "freshness": 75.68,
+    "rank_this_week": 1
   },
   {
-    "team": "Ecommerce Operations",
-    "score": 70.31,
-    "tier": "silver",
-    "components": {
-      "quality": 75.0,
-      "documentation": 66.67,
-      "ownership": 66.67
-    },
-    "datasets": 12,
-    "weakest": "documentation"
+    "domain_name": "Ecommerce Operations",
+    "domain_urn": "urn:li:domain:b2fd91.91994180-93ee-43f7-9c97-5e74a4a43fbd",
+    "week_of": "2026-07-13",
+    "trust_score": 73.51,
+    "quality": 75.0,
+    "documentation": 75.0,
+    "ownership": 83.33,
+    "freshness": 59.23,
+    "rank_this_week": 2
   },
   {
-    "team": "Engineering Division",
-    "score": 51.17,
-    "tier": "bronze",
-    "components": {
-      "quality": 50.0,
-      "documentation": 43.75,
-      "ownership": 62.5
-    },
-    "datasets": 8,
-    "weakest": "documentation"
+    "domain_name": "E-Commerce",
+    "domain_urn": "urn:li:domain:b2fd91.d4f24004-fb54-4e3c-8dea-2b7e209230b0",
+    "week_of": "2026-07-13",
+    "trust_score": 63.91,
+    "quality": 50.0,
+    "documentation": 70.83,
+    "ownership": 91.67,
+    "freshness": 51.82,
+    "rank_this_week": 3
   },
   {
-    "team": "E-Commerce",
-    "score": 42.71,
-    "tier": "bronze",
-    "components": {
-      "quality": 50.0,
-      "documentation": 54.17,
-      "ownership": 58.33,
-      "freshness": 0.0
-    },
-    "datasets": 12,
-    "weakest": "freshness"
+    "domain_name": "Engineering Division",
+    "domain_urn": "urn:li:domain:b2fd91.ce125416-344c-4db4-9f07-f7086a851606",
+    "week_of": "2026-07-13",
+    "trust_score": 53.23,
+    "quality": 50.0,
+    "documentation": 56.25,
+    "ownership": 75.0,
+    "freshness": 33.32,
+    "rank_this_week": 4
   },
   {
-    "team": "Marketing",
-    "score": 40.04,
-    "tier": "bronze",
-    "components": {
-      "quality": 25.0,
-      "documentation": 53.12,
-      "ownership": 50.0
-    },
-    "datasets": 8,
-    "weakest": "quality"
+    "domain_name": "Marketing",
+    "domain_urn": "urn:li:domain:b2fd91.e0f246dc-e7a5-40ed-9441-1e397ed6e2ad",
+    "week_of": "2026-07-13",
+    "trust_score": 42.1,
+    "quality": 25.0,
+    "documentation": 65.62,
+    "ownership": 62.5,
+    "freshness": 22.21,
+    "rank_this_week": 5
   }
 ]

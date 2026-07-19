@@ -1,27 +1,105 @@
-[
-  {
-    "name": "Data Platform Team",
-    "trust_score": 81.57,
-    "trust_tier": "gold"
-  },
-  {
-    "name": "Ecommerce Operations",
-    "trust_score": 70.31,
-    "trust_tier": "silver"
-  },
-  {
-    "name": "Engineering Division",
-    "trust_score": 51.17,
-    "trust_tier": "bronze"
-  },
-  {
-    "name": "E-Commerce",
-    "trust_score": 42.71,
-    "trust_tier": "bronze"
-  },
-  {
-    "name": "Marketing",
-    "trust_score": 40.04,
-    "trust_tier": "bronze"
+{
+  "teams": [
+    {
+      "domain_name": "Data Platform Team",
+      "domain_urn": "urn:li:domain:b2fd91.1caf2b7c-ca73-4708-bdec-6687d78cab0e",
+      "week_of": "2026-07-13",
+      "trust_score": 88.75,
+      "assertions_passing_pct": 91.67,
+      "freshness_score": 75.68,
+      "documentation_score": 86.11,
+      "ownership_score": 100.0,
+      "rank_this_week": 1,
+      "rank_last_week": 1,
+      "score_last_week": 87.25,
+      "spark": [
+        84.75,
+        85.75,
+        87.25,
+        88.75
+      ]
+    },
+    {
+      "domain_name": "Ecommerce Operations",
+      "domain_urn": "urn:li:domain:b2fd91.91994180-93ee-43f7-9c97-5e74a4a43fbd",
+      "week_of": "2026-07-13",
+      "trust_score": 73.51,
+      "assertions_passing_pct": 75.0,
+      "freshness_score": 59.23,
+      "documentation_score": 75.0,
+      "ownership_score": 83.33,
+      "rank_this_week": 2,
+      "rank_last_week": 2,
+      "score_last_week": 71.01,
+      "spark": [
+        63.51,
+        67.51,
+        71.01,
+        73.51
+      ]
+    },
+    {
+      "domain_name": "E-Commerce",
+      "domain_urn": "urn:li:domain:b2fd91.d4f24004-fb54-4e3c-8dea-2b7e209230b0",
+      "week_of": "2026-07-13",
+      "trust_score": 63.91,
+      "assertions_passing_pct": 50.0,
+      "freshness_score": 51.82,
+      "documentation_score": 70.83,
+      "ownership_score": 91.67,
+      "rank_this_week": 3,
+      "rank_last_week": 3,
+      "score_last_week": 62.41,
+      "spark": [
+        58.91,
+        60.91,
+        62.41,
+        63.91
+      ]
+    },
+    {
+      "domain_name": "Engineering Division",
+      "domain_urn": "urn:li:domain:b2fd91.ce125416-344c-4db4-9f07-f7086a851606",
+      "week_of": "2026-07-13",
+      "trust_score": 53.23,
+      "assertions_passing_pct": 50.0,
+      "freshness_score": 33.32,
+      "documentation_score": 56.25,
+      "ownership_score": 75.0,
+      "rank_this_week": 4,
+      "rank_last_week": 4,
+      "score_last_week": 56.23,
+      "spark": [
+        60.23,
+        57.23,
+        56.23,
+        53.23
+      ]
+    },
+    {
+      "domain_name": "Marketing",
+      "domain_urn": "urn:li:domain:b2fd91.e0f246dc-e7a5-40ed-9441-1e397ed6e2ad",
+      "week_of": "2026-07-13",
+      "trust_score": 42.1,
+      "assertions_passing_pct": 25.0,
+      "freshness_score": 22.21,
+      "documentation_score": 65.62,
+      "ownership_score": 62.5,
+      "rank_this_week": 5,
+      "rank_last_week": 5,
+      "score_last_week": 36.1,
+      "spark": [
+        28.1,
+        32.1,
+        36.1,
+        42.1
+      ]
+    }
+  ],
+  "team_of_the_week": "Data Platform Team",
+  "most_improved": {
+    "domain_name": "Marketing",
+    "score_delta": 6.0,
+    "trust_score": 42.1
   }
-]
+}
