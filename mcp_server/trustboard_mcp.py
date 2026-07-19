@@ -1,10 +1,9 @@
 """TrustBoard MCP server: exposes the Trust Score to the agent ecosystem.
 
-This is the KILLER ANGLE of the project. TrustBoard keeps the score out of a
-private database: it writes it to the DataHub graph AND exposes it as MCP tools
-that ANY other agent can consume before acting. This closes the "the next agent
-inherits the knowledge" loop: an agent asks whether a dataset is trustworthy
-without even knowing that TrustBoard exists.
+TrustBoard keeps the score out of a private database. It writes it to the
+DataHub graph and publishes it as MCP tools any other agent can consume before
+acting, so an agent can ask whether a dataset is trustworthy without knowing
+that TrustBoard exists.
 
 Run (stdio):
     python -m mcp_server.trustboard_mcp

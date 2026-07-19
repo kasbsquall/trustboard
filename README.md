@@ -35,9 +35,10 @@ Three specialized agents, plus a fourth that proves the point:
 3. **The Herald** builds the weekly ranking against last week and posts it to Slack as a sports
    scoreboard: podium, tiers, "team of the week", and the "most improved" comeback story.
 4. **The Gatekeeper** is a *separate* agent that consults the Trust Score before using a dataset. A
-   gold dataset gets a GO; an at-risk dataset gets a NO-GO with a safer alternative. It shares no
-   state, database or run with TrustBoard: it discovers the score by querying DataHub, the same way
-   a third-party agent would. This closes the loop: agent to graph to agent.
+   gold dataset gets a GO; an at-risk one gets a NO-GO and is escalated to the team that owns it.
+   It reaches the score **over MCP**, spawning the TrustBoard MCP server as its own process and
+   calling `is_trustworthy`. It imports nothing from TrustBoard and shares no database with it, so
+   what it inherits, it inherits from the graph. This closes the loop: agent to graph to agent.
 
 A web dashboard (FastAPI + Next.js) shows the current league and each team's trend over time.
 
@@ -71,6 +72,12 @@ weights are renormalized, so a missing signal is visible as reduced coverage rat
 zero. A domain's score is the average of its datasets. Tiers: gold >= 80, silver >= 60, bronze >= 40,
 at-risk below 40. The scoring logic is pure and unit-tested (`scoring/trust_score.py`), which is why
 it can be packaged as a reusable DataHub Skill.
+
+Renormalization has a trade-off worth stating plainly: a team with no tests at all is scored on the
+three components it does have, so it can outrank a team that runs tests and fails them. Scoring a
+missing signal as zero was the worse failure mode here, because it punishes teams for gaps the
+catalog cannot see. Coverage is reported alongside the score for that reason, and a production
+deployment should set a minimum coverage below which a team is left unrated instead of scored.
 
 ## Architecture
 
@@ -143,7 +150,7 @@ uvicorn backend.main:app --port 8000 --reload      # API
 cd frontend && npm install && npm run dev          # dashboard at http://localhost:3000
 ```
 
-### The Gatekeeper demo (the killer angle)
+### The Gatekeeper demo: agent to graph to agent
 
 ```bash
 python -m agents.gatekeeper        # a second agent consumes the score and decides GO / NO-GO

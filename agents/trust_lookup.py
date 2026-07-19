@@ -1,7 +1,7 @@
 """Reading the Trust Score back from the DataHub graph.
 
 Reads what the Scribe wrote back (domain-level structured property, dataset-level
-tier tag). This is the foundation of the KILLER ANGLE: the MCP server and the
+tier tag). This is what the MCP server and the
 Gatekeeper agent consume these functions so that the trust knowledge TrustBoard
 produced is inherited by other agents.
 """
