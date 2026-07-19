@@ -153,7 +153,7 @@ cd frontend && npm install && npm run dev          # dashboard at http://localho
 ### The Gatekeeper demo: agent to graph to agent
 
 ```bash
-python -m agents.gatekeeper        # a second agent consumes the score and decides GO / NO-GO
+python -m scripts.gatekeeper_demo  # a second agent consumes the score over MCP and decides GO / NO-GO
 python -m mcp_server.trustboard_mcp   # or run the MCP server for other agents to consume
 ```
 
