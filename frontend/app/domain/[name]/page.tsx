@@ -143,20 +143,30 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
             )}
           </p>
         </div>
+        {/* NumberFlow exposes one node per digit, so a screen reader spells the
+            score out. The container carries the accessible name instead. */}
         <div
           className="detail__score tnum"
+          role="img"
+          aria-label={`Trust score ${score.toFixed(1)}, ${tier.replace("-", " ")} tier`}
           style={{ color: `var(--tier-${tier === "at-risk" ? "risk" : tier})` }}
         >
-          <NumberFlow value={Number(score.toFixed(1))} locales="en-US"
-            format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }} />
+          <span aria-hidden="true">
+            <NumberFlow value={Number(score.toFixed(1))} locales="en-US"
+              format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }} />
+          </span>
           <span className="detail__tier">{tier.replace("-", " ")} tier</span>
         </div>
       </header>
 
       <p className="next-tier">
-        {next && (
+        {next ? (
           <>
             <b>{(next.at - score).toFixed(1)} points</b> to reach {next.name} tier.{" "}
+          </>
+        ) : (
+          <>
+            <b>Top tier.</b> Stay at 80 or above to hold gold.{" "}
           </>
         )}
         <span className="next-tier__scale">
@@ -207,7 +217,10 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
       {(neighbours.prev || neighbours.next) && (
         <nav className="pager" aria-label="Other teams">
           {neighbours.prev ? (
-            <Link href={`/domain/${encodeURIComponent(neighbours.prev.domain_name)}`}>
+            <Link
+              href={`/domain/${encodeURIComponent(neighbours.prev.domain_name)}`}
+              aria-label={`Ranked above: ${ordinal(neighbours.prev.rank_this_week ?? 0)} ${neighbours.prev.domain_name}`}
+            >
               <ArrowLeft size={13} weight="light" aria-hidden="true" />
               {ordinal(neighbours.prev.rank_this_week ?? 0)} {neighbours.prev.domain_name}
             </Link>
@@ -215,7 +228,11 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
             <span />
           )}
           {neighbours.next && (
-            <Link href={`/domain/${encodeURIComponent(neighbours.next.domain_name)}`} className="pager__next">
+            <Link
+              href={`/domain/${encodeURIComponent(neighbours.next.domain_name)}`}
+              className="pager__next"
+              aria-label={`Ranked below: ${ordinal(neighbours.next.rank_this_week ?? 0)} ${neighbours.next.domain_name}`}
+            >
               {ordinal(neighbours.next.rank_this_week ?? 0)} {neighbours.next.domain_name}
               <ArrowLeft size={13} weight="light" aria-hidden="true" style={{ transform: "rotate(180deg)" }} />
             </Link>

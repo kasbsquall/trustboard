@@ -17,8 +17,20 @@ export function TrendChart({ points }: { points: HistoryPoint[] }) {
   const innerW = W - PAD.left - PAD.right;
   const innerH = H - PAD.top - PAD.bottom;
 
+  // The axis follows the data, not the 0-100 range of the score. Weekly
+  // movement is a handful of points, so a fixed full range draws every team as
+  // a flat line and the chart says nothing. The window is padded and never
+  // collapses, so a team that did not move still reads as steady rather than
+  // filling the panel.
+  const values = points.map((p) => p.trust_score);
+  const span = Math.max(...values) - Math.min(...values);
+  const pad = Math.max(4, span * 0.35);
+  const lo = Math.max(0, Math.min(...values) - pad);
+  const hi = Math.min(100, Math.max(...values) + pad);
+  const gridlines = [lo, lo + (hi - lo) / 2, hi];
+
   const x = (i: number) => PAD.left + (i / (points.length - 1)) * innerW;
-  const y = (v: number) => PAD.top + innerH - (v / 100) * innerH;
+  const y = (v: number) => PAD.top + innerH - ((v - lo) / (hi - lo)) * innerH;
 
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(p.trust_score)}`).join(" ");
   const area = `${line} L ${x(points.length - 1)} ${PAD.top + innerH} L ${x(0)} ${PAD.top + innerH} Z`;
@@ -42,7 +54,7 @@ export function TrendChart({ points }: { points: HistoryPoint[] }) {
         </linearGradient>
       </defs>
 
-      {[0, 25, 50, 75, 100].map((v) => (
+      {gridlines.map((v) => (
         <g key={v}>
           <line
             x1={PAD.left}
@@ -60,7 +72,7 @@ export function TrendChart({ points }: { points: HistoryPoint[] }) {
             fill="var(--text-faint)"
             style={{ fontSize: 11, fontFamily: "var(--font-ui)", fontVariantNumeric: "tabular-nums" }}
           >
-            {v}
+            {v.toFixed(0)}
           </text>
         </g>
       ))}

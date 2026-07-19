@@ -626,6 +626,31 @@ a {
   padding: var(--ma-lg) 0;
 }
 
+/* The leader carries the same trend and change the table promises, sitting
+   under its score so the eye reads score then movement. */
+.headline__trend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ma-xs);
+  margin-top: var(--ma-xs);
+}
+
+.headline__trend > svg:first-child {
+  width: 74px;
+  opacity: 0.85;
+}
+
+.headline__trend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--step--1);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 /* ============================================================
    Responsive: collapse to a readable single column
    ============================================================ */
@@ -639,6 +664,9 @@ a {
   .masthead__meta { text-align: left; max-width: none; }
   .headline { grid-template-columns: 1fr; gap: var(--ma-md); }
   .headline__score { text-align: left; }
+  /* Stacked layout: the trend follows the score on the same edge instead of
+     drifting to the opposite side of the block. */
+  .headline__trend { justify-content: flex-start; }
   .standings__head { display: none; }
   .row {
     grid-template-columns: 2rem minmax(0, 1fr) auto;
@@ -790,3 +818,4 @@ a {
   color: var(--text-faint);
   font-size: var(--step--1);
 }
+

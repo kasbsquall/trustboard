@@ -54,7 +54,7 @@ function weakestOf(team: Team) {
   ].filter(([, v]) => v != null) as [string, number][];
   if (parts.length === 0) return "No signals yet";
   const [name, value] = parts.reduce((a, b) => (b[1] < a[1] ? b : a));
-  return `Weakest: ${name} ${Math.round(value)}%`;
+  return `Weakest: ${name[0].toUpperCase()}${name.slice(1)} ${Math.round(value)}%`;
 }
 
 export default async function Home() {
@@ -65,7 +65,8 @@ export default async function Home() {
     return (
       <main className="shell">
         <p className="empty-note">
-          <b>Standings unavailable.</b> The TrustBoard API did not respond. Retry in a moment.
+          <b>Standings unavailable.</b> The TrustBoard API did not respond. Reload the page
+          once it is back.
         </p>
       </main>
     );
@@ -109,7 +110,7 @@ export default async function Home() {
       <Link
         href={`/domain/${encodeURIComponent(leader.domain_name)}`}
         className={`headline tier-${leaderTier}`}
-        aria-label={`First place, ${leader.domain_name}, trust score ${leader.trust_score.toFixed(1)}, ${leaderTier.replace("-", " ")} tier`}
+        aria-label={`First place, ${leader.domain_name}, trust score ${leader.trust_score.toFixed(1)}, ${leaderDelta.dir}${leaderDelta.label} points, ${leaderTier.replace("-", " ")} tier`}
       >
         <div>
           <div className="headline__label">
@@ -128,6 +129,17 @@ export default async function Home() {
         <div className="headline__score tnum">
           {leader.trust_score.toFixed(1)}
           <span>{leaderTier.replace("-", " ")} tier</span>
+          {/* The table below promises a trend and a change for every team. The
+              leader has to honour that too, or the rule breaks on the one row
+              the reader looks at first. */}
+          <div className="headline__trend" aria-hidden="true">
+            <Sparkline points={leader.spark ?? []} tone={leaderDelta.cls === "delta-up" ? "up" : leaderDelta.cls === "delta-down" ? "down" : "flat"} />
+            <span className={`tnum ${leaderDelta.cls}`}>
+              {leaderDelta.cls === "delta-up" && <TrendUp size={13} weight="light" />}
+              {leaderDelta.cls === "delta-down" && <TrendDown size={13} weight="light" />}
+              {leaderDelta.label}
+            </span>
+          </div>
         </div>
       </Link>
 
@@ -137,7 +149,7 @@ export default async function Home() {
           <span>Team</span>
           <span>Trend</span>
           <span>Score</span>
-          <span>Change (points)</span>
+          <span>Change</span>
           <span>Tier</span>
         </div>
 
