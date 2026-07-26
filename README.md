@@ -3,7 +3,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org)
 
-**Demo video (2 min): https://youtu.be/pMENewLwY04**
+**Demo video (1:49): https://youtu.be/6aZ8X2LyaNQ**
 **Live demo: https://trustboard.duckdns.org** (a saved snapshot of a real run, see below)
 
 **TrustBoard turns data governance into a weekly sport.** A multi-agent system reads quality
@@ -186,7 +186,7 @@ trustboard/
 - **Real-World Usefulness:** a data team sees exactly what drags their score, gets an actionable
   quest, and downstream agents refuse to build on untrusted data.
 - **Submission Quality:** reproducible quickstart, sample outputs, a [2-minute demo
-  video](https://youtu.be/pMENewLwY04), and a live board at trustboard.duckdns.org.
+  video](https://youtu.be/6aZ8X2LyaNQ), and a live board at trustboard.duckdns.org.
 
 ## Open source contributions
 
