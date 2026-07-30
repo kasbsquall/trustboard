@@ -16,9 +16,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from agents.auditor import audit_all_domains  # noqa: E402
-from backend.database.repository import _monday_of, save_weekly_snapshot  # noqa: E402
-from mcp_client.datahub_connection import get_graph  # noqa: E402
+from agents.auditor import audit_all_domains
+from backend.database.repository import _monday_of, save_weekly_snapshot
+from mcp_client.datahub_connection import cli, get_graph
 
 # How much to SUBTRACT from the current score on weeks -3, -2, -1
 # (score = current - offset). A positive offset means it came from lower (it
@@ -74,6 +74,11 @@ def main() -> None:
                 "freshness_score": comps.get("freshness"),
                 "documentation_score": comps.get("documentation"),
                 "ownership_score": comps.get("ownership"),
+                "signal_coverage": a.score.coverage,
+                "score_version": a.score.score_version,
+                "dataset_count": a.score.dataset_count,
+                "rated_dataset_count": a.score.rated_dataset_count,
+                "rated": a.score.rated,
                 "rank_this_week": rank,
             }
         )
@@ -83,4 +88,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli(main)

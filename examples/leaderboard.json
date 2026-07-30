@@ -3,96 +3,116 @@
     {
       "domain_name": "Data Platform Team",
       "domain_urn": "urn:li:domain:b2fd91.1caf2b7c-ca73-4708-bdec-6687d78cab0e",
-      "week_of": "2026-07-13",
-      "trust_score": 85.84,
-      "assertions_passing_pct": 91.67,
-      "freshness_score": 76.65,
+      "week_of": "2026-07-27",
+      "trust_score": 84.05,
+      "assertions_passing_pct": 89.2,
+      "freshness_score": 76.64,
       "documentation_score": 79.63,
       "ownership_score": 92.59,
+      "signal_coverage": 1.0,
+      "score_version": "2.0",
+      "dataset_count": 27,
       "rank_this_week": 1,
       "rank_last_week": 1,
-      "score_last_week": 84.34,
+      "written_to_datahub": true,
+      "score_last_week": 82.55,
       "spark": [
-        81.84,
-        82.84,
-        84.34,
-        85.84
+        80.05,
+        81.05,
+        82.55,
+        84.05
       ]
     },
     {
       "domain_name": "Ecommerce Operations",
       "domain_urn": "urn:li:domain:b2fd91.91994180-93ee-43f7-9c97-5e74a4a43fbd",
-      "week_of": "2026-07-13",
-      "trust_score": 66.17,
-      "assertions_passing_pct": 75.0,
-      "freshness_score": 59.99,
+      "week_of": "2026-07-27",
+      "trust_score": 64.46,
+      "assertions_passing_pct": 70.14,
+      "freshness_score": 59.98,
       "documentation_score": 58.33,
       "ownership_score": 66.67,
+      "signal_coverage": 1.0,
+      "score_version": "2.0",
+      "dataset_count": 12,
       "rank_this_week": 2,
       "rank_last_week": 2,
-      "score_last_week": 63.67,
+      "written_to_datahub": true,
+      "score_last_week": 61.96,
       "spark": [
-        56.17,
-        60.17,
-        63.67,
-        66.17
+        54.46,
+        58.46,
+        61.96,
+        64.46
       ]
     },
     {
       "domain_name": "E-Commerce",
       "domain_urn": "urn:li:domain:b2fd91.d4f24004-fb54-4e3c-8dea-2b7e209230b0",
-      "week_of": "2026-07-13",
-      "trust_score": 50.08,
-      "assertions_passing_pct": 50.0,
-      "freshness_score": 52.49,
+      "week_of": "2026-07-27",
+      "trust_score": 53.72,
+      "assertions_passing_pct": 60.42,
+      "freshness_score": 52.48,
       "documentation_score": 41.67,
       "ownership_score": 58.33,
+      "signal_coverage": 1.0,
+      "score_version": "2.0",
+      "dataset_count": 12,
       "rank_this_week": 3,
       "rank_last_week": 3,
-      "score_last_week": 48.58,
+      "written_to_datahub": true,
+      "score_last_week": 52.22,
       "spark": [
-        45.08,
-        47.08,
-        48.58,
-        50.08
+        48.72,
+        50.72,
+        52.22,
+        53.72
       ]
     },
     {
       "domain_name": "Engineering Division",
       "domain_urn": "urn:li:domain:b2fd91.ce125416-344c-4db4-9f07-f7086a851606",
-      "week_of": "2026-07-13",
-      "trust_score": 38.78,
-      "assertions_passing_pct": 50.0,
+      "week_of": "2026-07-27",
+      "trust_score": 35.95,
+      "assertions_passing_pct": 46.88,
       "freshness_score": 33.74,
       "documentation_score": 28.12,
       "ownership_score": 37.5,
+      "signal_coverage": 1.0,
+      "score_version": "2.0",
+      "dataset_count": 8,
       "rank_this_week": 4,
       "rank_last_week": 4,
-      "score_last_week": 41.78,
+      "written_to_datahub": true,
+      "score_last_week": 38.95,
       "spark": [
-        45.78,
-        42.78,
-        41.78,
-        38.78
+        42.95,
+        39.95,
+        38.95,
+        35.95
       ]
     },
     {
       "domain_name": "Marketing",
       "domain_urn": "urn:li:domain:b2fd91.e0f246dc-e7a5-40ed-9441-1e397ed6e2ad",
-      "week_of": "2026-07-13",
-      "trust_score": 26.06,
-      "assertions_passing_pct": 25.0,
+      "week_of": "2026-07-27",
+      "trust_score": 31.04,
+      "assertions_passing_pct": 27.08,
       "freshness_score": 22.49,
       "documentation_score": 31.25,
       "ownership_score": 25.0,
+      "signal_coverage": 1.0,
+      "score_version": "2.0",
+      "dataset_count": 8,
       "rank_this_week": 5,
       "rank_last_week": 5,
-      "score_last_week": 20.06,
+      "written_to_datahub": true,
+      "score_last_week": 25.04,
       "spark": [
-        12.06,
-        16.06,
-        20.06,
-        26.06
+        17.04,
+        21.04,
+        25.04,
+        31.04
       ]
     }
   ],
@@ -100,6 +120,6 @@
   "most_improved": {
     "domain_name": "Marketing",
     "score_delta": 6.0,
-    "trust_score": 26.06
+    "trust_score": 31.04
   }
 }

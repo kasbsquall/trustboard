@@ -26,12 +26,12 @@ sys.path.insert(0, str(ROOT))
 
 from sqlalchemy import select  # noqa: E402
 
+from agents import trust_lookup  # noqa: E402
+from agents.herald import build_message  # noqa: E402
 from backend.database.connection import SessionLocal  # noqa: E402
 from backend.database.models import DomainScore  # noqa: E402
 from backend.database.repository import previous_week_scores  # noqa: E402
 from backend.main import leaderboard  # noqa: E402
-from agents.herald import build_message  # noqa: E402
-from agents import trust_lookup  # noqa: E402
 
 SEED_FILE = ROOT / "backend" / "database" / "seed_data.json"
 EXAMPLES = ROOT / "examples"
@@ -77,8 +77,14 @@ def main() -> None:
                     "freshness_score": r.freshness_score,
                     "documentation_score": r.documentation_score,
                     "ownership_score": r.ownership_score,
+                    "signal_coverage": r.signal_coverage,
+                    "score_version": r.score_version,
+                    "dataset_count": r.dataset_count,
+                    "rated_dataset_count": r.rated_dataset_count,
+                    "rated": None if r.rated is None else bool(r.rated),
                     "rank_this_week": r.rank_this_week,
                     "rank_last_week": r.rank_last_week,
+                    "written_to_datahub": bool(r.written_to_datahub),
                 }
                 for r in rows
             ]
@@ -101,6 +107,11 @@ def main() -> None:
                 "documentation": r.documentation_score,
                 "ownership": r.ownership_score,
                 "freshness": r.freshness_score,
+                "signal_coverage": r.signal_coverage,
+                "score_version": r.score_version,
+                "dataset_count": r.dataset_count,
+                "rated_dataset_count": r.rated_dataset_count,
+                "rated": None if r.rated is None else bool(r.rated),
                 "rank_this_week": r.rank_this_week,
             }
             for r in rows

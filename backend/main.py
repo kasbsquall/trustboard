@@ -43,6 +43,35 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/model")
+def model() -> dict:
+    """The scoring model itself: weights, tier cut-offs and the coverage floor.
+
+    Served rather than hardcoded in the dashboard so the numbers that govern
+    every badge on the screen come from the same place the scores do. A rule
+    that only exists in the code is a rule the people being ranked by it cannot
+    check.
+    """
+    from scoring.trust_score import (
+        AT_RISK_THRESHOLD,
+        FRESHNESS_WINDOW_DAYS,
+        MIN_COVERAGE,
+        SCORE_VERSION,
+        TIERS,
+        WEIGHTS,
+    )
+
+    return {
+        "version": SCORE_VERSION,
+        "weights": WEIGHTS,
+        "tiers": [{"name": name, "min_score": floor} for name, floor in TIERS],
+        "min_coverage": MIN_COVERAGE,
+        "incident_threshold": AT_RISK_THRESHOLD,
+        "quality_required": True,
+        "freshness_window_days": FRESHNESS_WINDOW_DAYS,
+    }
+
+
 @app.get("/api/leaderboard")
 def leaderboard() -> dict:
     """Leaderboard for the most recent week, with current and previous rank."""

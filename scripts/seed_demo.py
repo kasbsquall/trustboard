@@ -22,6 +22,7 @@ Usage:
 """
 from __future__ import annotations
 
+import hashlib
 import re
 import sys
 import time
@@ -29,14 +30,25 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from datahub.emitter.mcp import MetadataChangeProposalWrapper  # noqa: E402
-from datahub.metadata.schema_classes import (  # noqa: E402
+from datahub.emitter.mcp import MetadataChangeProposalWrapper
+from datahub.emitter.rest_emitter import EmitMode
+from datahub.metadata.schema_classes import (
+    AssertionInfoClass,
+    AssertionResultClass,
+    AssertionResultTypeClass,
+    AssertionRunEventClass,
+    AssertionRunStatusClass,
+    AssertionStdOperatorClass,
+    AssertionTypeClass,
     AuditStampClass,
+    DatasetAssertionInfoClass,
+    DatasetAssertionScopeClass,
     DatasetPropertiesClass,
     DomainsClass,
     EditableDatasetPropertiesClass,
     GlossaryTermAssociationClass,
     GlossaryTermsClass,
+    OperationClass,
     OwnerClass,
     OwnershipClass,
     OwnershipTypeClass,
@@ -45,7 +57,8 @@ from datahub.metadata.schema_classes import (  # noqa: E402
     TestResultTypeClass,
 )
 
-from mcp_client.datahub_connection import get_graph  # noqa: E402
+from agents.auditor import _aspect, list_dataset_urns, list_domains
+from mcp_client.datahub_connection import cli, get_graph
 
 ACTOR = "urn:li:corpuser:datahub"
 
@@ -74,17 +87,29 @@ PLATFORM_TO_TEAM = {
 
 # Health profile per team: target fraction for each signal. This creates the
 # contrast that makes the leaderboard interesting.
+# `assertions` is the fraction of a team's datasets that get real data
+# assertions with recorded runs. It is deliberately below 1.0 for every team, so
+# the audit ends up reading its preferred source on some datasets and falling
+# back to metadata tests on others, which is the mix a real catalog has.
+# `quality` is the fraction that gets ANY quality signal. Below 1.0 on purpose:
+# the rest are uninstrumented tables, which is the ordinary state of a real
+# catalog and the only way the unrated path exists in the demo at all. Before
+# this, every dataset had all four signals, so the coverage floor, the quality
+# requirement and the whole unrated tier were dead code in every artifact a
+# reader could see.
 PROFILES = {
-    "Data Platform Team": dict(doc=0.90, own=0.90, terms=0.80, pass_ratio=0.90, fresh=0.85),
-    "Ecommerce Operations": dict(doc=0.75, own=0.70, terms=0.60, pass_ratio=0.78, fresh=0.70),
-    "E-Commerce": dict(doc=0.55, own=0.50, terms=0.40, pass_ratio=0.55, fresh=0.50),
-    "Engineering Division": dict(doc=0.35, own=0.30, terms=0.25, pass_ratio=0.38, fresh=0.30),
-    "Marketing": dict(doc=0.15, own=0.15, terms=0.10, pass_ratio=0.22, fresh=0.15),
+    "Data Platform Team": dict(doc=0.90, own=0.90, terms=0.80, pass_ratio=0.90, fresh=0.85, assertions=0.85, quality=1.00),
+    "Ecommerce Operations": dict(doc=0.75, own=0.70, terms=0.60, pass_ratio=0.78, fresh=0.70, assertions=0.65, quality=0.92),
+    "E-Commerce": dict(doc=0.55, own=0.50, terms=0.40, pass_ratio=0.55, fresh=0.50, assertions=0.45, quality=0.85),
+    "Engineering Division": dict(doc=0.35, own=0.30, terms=0.25, pass_ratio=0.38, fresh=0.30, assertions=0.30, quality=0.75),
+    "Marketing": dict(doc=0.15, own=0.15, terms=0.10, pass_ratio=0.22, fresh=0.15, assertions=0.10, quality=0.60),
 }
 
-# Freshness reads DatasetProperties.lastModified. A dataset inside the team's
-# fresh fraction was updated a few days ago, one outside it months ago, which
-# puts it well past the scoring window.
+# Freshness prefers the Operation aspect, which records when the DATA changed.
+# The seeder emits both that and DatasetProperties.lastModified so the audit
+# exercises its primary source and its fallback on the same graph. A dataset
+# inside the team's fresh fraction changed a few days ago, one outside it months
+# ago, which puts it well past the scoring window.
 _MS_PER_DAY = 86_400_000
 FRESH_AGE_DAYS = 3
 STALE_AGE_DAYS = 75
@@ -109,6 +134,14 @@ TEST_CHECKS = [
     "urn:li:test:trustboard.uniqueness",
 ]
 
+# Data assertions, the quality source the Auditor prefers. Each one is a claim
+# about the data rather than about the catalog entry.
+ASSERTION_CHECKS = [
+    ("row-count-not-zero", DatasetAssertionScopeClass.DATASET_ROWS, AssertionStdOperatorClass.GREATER_THAN),
+    ("no-null-primary-key", DatasetAssertionScopeClass.DATASET_COLUMN, AssertionStdOperatorClass.NOT_NULL),
+    ("schema-unchanged", DatasetAssertionScopeClass.DATASET_SCHEMA, AssertionStdOperatorClass.EQUAL_TO),
+]
+
 _PLATFORM_RE = re.compile(r"dataPlatform:([^,]+),")
 
 
@@ -125,17 +158,16 @@ def _platform_of(dataset_urn: str) -> str | None:
     return m.group(1) if m else None
 
 
-def list_dataset_urns(graph) -> list[str]:
-    query = (
-        '{ search(input: {type: DATASET, query: "*", start: 0, count: 200}) '
-        "{ searchResults { entity { urn } } } }"
-    )
-    results = graph.execute_graphql(query)["search"]["searchResults"]
-    # Sorted, because search returns results by relevance and that ranking
-    # shifts once the Scribe writes tags. An unstable order would hand each
-    # dataset a different index on the next run, and with it a different set
-    # of signals, so the scores would drift every time this is re-run.
-    return sorted(r["entity"]["urn"] for r in results)
+def _assertion_urn(dataset_urn: str, check: str) -> str:
+    """A stable URN for a seeded assertion.
+
+    Derived from the dataset and the check name, so re-running the seeder
+    updates the same assertion instead of minting a new one every time. A random
+    id here would leave the graph accumulating dead assertions, and each run
+    would change the score.
+    """
+    digest = hashlib.sha1(f"{dataset_urn}|{check}".encode()).hexdigest()[:20]
+    return f"urn:li:assertion:trustboard-{digest}"
 
 
 def resolve_domains(graph) -> dict[str, str]:
@@ -145,15 +177,7 @@ def resolve_domains(graph) -> dict[str, str]:
     is assigning every dataset to a dangling URN and watching the Auditor find
     nothing to score with no explanation.
     """
-    query = (
-        '{ search(input: {type: DOMAIN, query: "*", start: 0, count: 100}) '
-        "{ searchResults { entity { urn ... on Domain { properties { name } } } } } }"
-    )
-    results = graph.execute_graphql(query)["search"]["searchResults"]
-    by_name = {
-        (r["entity"].get("properties") or {}).get("name"): r["entity"]["urn"]
-        for r in results
-    }
+    by_name = {name: urn for urn, name in list_domains(graph).items()}
     resolved = {name: by_name[name] for name in TEAM_NAMES if name in by_name}
     missing = [name for name in TEAM_NAMES if name not in resolved]
     if missing:
@@ -173,11 +197,17 @@ def seed_dataset(graph, domains: dict[str, str], dataset_urn: str, team: str, id
     which fraction receives each signal, respecting the profile.
     """
     profile = PROFILES[team]
-    def emit(aspect) -> None:
-        graph.emit_mcp(MetadataChangeProposalWrapper(entityUrn=dataset_urn, aspect=aspect))
+    def emit(aspect, mode: EmitMode = EmitMode.SYNC_PRIMARY) -> None:
+        graph.emit_mcp(
+            MetadataChangeProposalWrapper(entityUrn=dataset_urn, aspect=aspect),
+            emit_mode=mode,
+        )
 
-    # 1. Domain (team).
-    emit(DomainsClass(domains=[domains[team]]))
+    # 1. Domain (team). Emitted with SYNC_WAIT rather than the default, because
+    # this is the one aspect that decides which team a dataset counts toward. A
+    # write that has not landed yet does not merely delay a number, it files the
+    # dataset under whichever domain the datapack gave it.
+    emit(DomainsClass(domains=[domains[team]]), mode=EmitMode.SYNC_WAIT)
 
     # Deterministic threshold: the i-th dataset "falls inside" fraction f if
     # (i mod 100)/100 < f. Spreads the signals in a stable way.
@@ -219,19 +249,43 @@ def seed_dataset(graph, domains: dict[str, str], dataset_urn: str, team: str, id
     )
     emit(GlossaryTermsClass(terms=terms, auditStamp=_audit()))
 
-    # 5. Freshness. The existing aspect is read back and re-emitted with only
-    # lastModified changed, so the name, description and custom properties that
-    # came with the datapack survive.
+    # 5. Freshness, in both sources the Auditor knows about. The existing
+    # datasetProperties aspect is read back and re-emitted with only lastModified
+    # changed, so the name, description and custom properties that came with the
+    # datapack survive.
+    age_days = FRESH_AGE_DAYS if within(profile["fresh"]) else STALE_AGE_DAYS
+    changed_at = _now_ms() - age_days * _MS_PER_DAY
+
     props = graph.get_aspect(dataset_urn, DatasetPropertiesClass) or DatasetPropertiesClass(
         customProperties={}
     )
-    age_days = FRESH_AGE_DAYS if within(profile["fresh"]) else STALE_AGE_DAYS
-    props.lastModified = AuditStampClass(
-        time=_now_ms() - age_days * _MS_PER_DAY, actor=ACTOR
-    )
+    props.lastModified = AuditStampClass(time=changed_at, actor=ACTOR)
     emit(props)
 
-    # 6. testResults: 4 checks, how many pass depends on pass_ratio.
+    # The Operation aspect is the one that says when the DATA changed, and it is
+    # what the Auditor reads first. It is a timeseries aspect, so the timestamp
+    # and messageId are derived from the dataset rather than from the clock: an
+    # ordinary now() here would append a new point on every run and the graph
+    # would fill up with duplicate operations.
+    emit(
+        OperationClass(
+            timestampMillis=changed_at,
+            operationType="UPDATE",
+            lastUpdatedTimestamp=changed_at,
+            actor=ACTOR,
+            messageId=f"trustboard-op-{hashlib.sha1(dataset_urn.encode()).hexdigest()[:16]}",
+        )
+    )
+
+    # 6. Quality. A dataset outside the team's `quality` fraction gets NO quality
+    # signal from either source: an empty testResults and no assertions. That is
+    # an uninstrumented table, and the scorer returns it unrated rather than
+    # inventing a grade for data nobody checks.
+    if not within(profile["quality"]):
+        emit(TestResultsClass(passing=[], failing=[]))
+        return
+
+    # testResults: 4 checks, how many pass depends on pass_ratio.
     n_pass = round(profile["pass_ratio"] * len(TEST_CHECKS))
     # Deterministic +-1 jitter so that not every dataset is identical.
     if idx % 3 == 0 and n_pass < len(TEST_CHECKS):
@@ -250,6 +304,93 @@ def seed_dataset(graph, domains: dict[str, str], dataset_urn: str, team: str, id
     ]
     emit(TestResultsClass(passing=passing, failing=failing))
 
+    # 7. Data assertions with recorded runs, the quality source the Auditor
+    # prefers over metadata tests. Only the team's `assertions` fraction gets
+    # them, so both code paths run against this graph.
+    if within(profile["assertions"]):
+        _seed_assertions(graph, dataset_urn, profile["pass_ratio"], idx, changed_at)
+
+
+def _seed_assertions(
+    graph, dataset_urn: str, pass_ratio: float, idx: int, run_at: int
+) -> None:
+    """Emits three data assertions on a dataset, each with one recorded run.
+
+    Deterministic throughout: the assertion URNs come from the dataset name, the
+    run timestamp comes from the same clock the freshness signal uses, and the
+    messageId is derived from the assertion. Re-running replaces these points
+    rather than stacking new ones, which is what keeps the score stable across
+    runs.
+    """
+    n_pass = round(pass_ratio * len(ASSERTION_CHECKS))
+    # Same deterministic jitter as the metadata tests, so a team's assertion
+    # results and test results move together instead of contradicting.
+    if idx % 3 == 0 and n_pass < len(ASSERTION_CHECKS):
+        n_pass += 1
+    elif idx % 3 == 1 and n_pass > 0:
+        n_pass -= 1
+    n_pass = max(0, min(len(ASSERTION_CHECKS), n_pass))
+
+    for i, (check, scope, operator) in enumerate(ASSERTION_CHECKS):
+        urn = _assertion_urn(dataset_urn, check)
+        graph.emit_mcp(
+            MetadataChangeProposalWrapper(
+                entityUrn=urn,
+                aspect=AssertionInfoClass(
+                    type=AssertionTypeClass.DATASET,
+                    description=f"TrustBoard demo assertion: {check}",
+                    datasetAssertion=DatasetAssertionInfoClass(
+                        dataset=dataset_urn, scope=scope, operator=operator
+                    ),
+                ),
+            )
+        )
+        result = (
+            AssertionResultTypeClass.SUCCESS if i < n_pass else AssertionResultTypeClass.FAILURE
+        )
+        graph.emit_mcp(
+            MetadataChangeProposalWrapper(
+                entityUrn=urn,
+                aspect=AssertionRunEventClass(
+                    timestampMillis=run_at,
+                    runId=f"trustboard-{run_at}",
+                    asserteeUrn=dataset_urn,
+                    status=AssertionRunStatusClass.COMPLETE,
+                    assertionUrn=urn,
+                    result=AssertionResultClass(type=result),
+                    messageId=f"trustboard-run-{hashlib.sha1(urn.encode()).hexdigest()[:16]}",
+                ),
+            )
+        )
+
+
+def verify_domains(graph, domains: dict[str, str], intended: dict[str, str]) -> int:
+    """Reads back every domain assignment and repairs the ones that did not land.
+
+    Writes are checked rather than assumed. Two datasets out of sixty-seven came
+    back filed under the domain the datapack gave them despite a successful-looking
+    emit, and because nothing read them back, the effect showed up much later as a
+    team gaining a dataset and another losing one between two runs of an audit that
+    is supposed to be deterministic. A seeder that does not verify its own writes
+    makes every reproducibility claim downstream of it unprovable.
+    """
+    by_urn = {urn: name for name, urn in domains.items()}
+    repaired = 0
+    for dataset_urn, team in intended.items():
+        current = _aspect(graph, dataset_urn, DomainsClass)
+        got = by_urn.get(current.domains[0]) if current and current.domains else None
+        if got == team:
+            continue
+        graph.emit_mcp(
+            MetadataChangeProposalWrapper(
+                entityUrn=dataset_urn, aspect=DomainsClass(domains=[domains[team]])
+            ),
+            emit_mode=EmitMode.SYNC_WAIT,
+        )
+        repaired += 1
+        print(f"  repaired domain: {dataset_urn.split(',')[1]} -> {team} (was {got})")
+    return repaired
+
 
 def main() -> None:
     graph = get_graph()
@@ -259,6 +400,7 @@ def main() -> None:
 
     per_team_idx: dict[str, int] = {t: 0 for t in TEAM_NAMES}
     assigned = {t: 0 for t in TEAM_NAMES}
+    intended: dict[str, str] = {}
     skipped = 0
 
     for urn in urns:
@@ -270,6 +412,11 @@ def main() -> None:
         seed_dataset(graph, domains, urn, team, per_team_idx[team])
         per_team_idx[team] += 1
         assigned[team] += 1
+        intended[urn] = team
+
+    repaired = verify_domains(graph, domains, intended)
+    if repaired:
+        print(f"  ({repaired} domain assignments did not land on the first write and were repaired)")
 
     print("\nDatasets assigned per team:")
     for team, n in assigned.items():
@@ -284,4 +431,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli(main)

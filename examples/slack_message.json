@@ -1,5 +1,5 @@
 {
-  "text": "TrustBoard Weekly. Team of the week: Data Platform Team (85.8)",
+  "text": "TrustBoard Weekly. Team of the week: Data Platform Team (84.0)",
   "blocks": [
     {
       "type": "header",
@@ -24,7 +24,7 @@
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text": "`1st`  *Data Platform Team*  85.8  (GOLD)  _up 1.5 pts_\n`2nd`  *Ecommerce Operations*  66.2  (SILVER)  _up 2.5 pts_\n`3rd`  *E-Commerce*  50.1  (BRONZE)  _up 1.5 pts_\n`4th`  *Engineering Division*  38.8  (AT-RISK)  _down 3.0 pts_\n`5th`  *Marketing*  26.1  (AT-RISK)  _up 6.0 pts_"
+        "text": "`1st`  *Data Platform Team*  84.0  (GOLD)  _up 1.5 pts_\n`2nd`  *Ecommerce Operations*  64.5  (SILVER)  _up 2.5 pts_\n`3rd`  *E-Commerce*  53.7  (BRONZE)  _up 1.5 pts_\n`4th`  *Engineering Division*  36.0  (AT-RISK)  _down 3.0 pts_\n`5th`  *Marketing*  31.0  (AT-RISK)  _up 6.0 pts_"
       }
     },
     {
@@ -34,7 +34,7 @@
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text": "*Team of the week:* Data Platform Team (85.8, GOLD)\n*Most improved:* Marketing (up 6.0 points this week)"
+        "text": "*Team of the week:* Data Platform Team (84.0, GOLD)\n*Most improved:* Marketing (up 6.0 points this week)"
       }
     }
   ]

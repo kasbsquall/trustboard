@@ -13,6 +13,8 @@ Usage:
 """
 from __future__ import annotations
 
+from datetime import date
+
 from agents import herald, scribe
 from agents.auditor import audit_all_domains
 from backend.database.repository import (
@@ -20,13 +22,16 @@ from backend.database.repository import (
     record_leaderboard_post,
     save_weekly_snapshot,
 )
-from mcp_client.datahub_connection import get_graph
+from mcp_client.datahub_connection import cli, get_graph
 from scoring.trust_score import trust_tier
 
-from datetime import date
 
+def _snapshot_rows(results, written_urns: set[str]) -> list[dict]:
+    """Turns the audit into history rows.
 
-def _snapshot_rows(results) -> list[dict]:
+    written_urns comes from the Scribe, so written_to_datahub records what
+    actually happened rather than being pinned to True on every row.
+    """
     rows = []
     for rank, audited in enumerate(results, 1):
         comps = audited.score.component_averages
@@ -39,8 +44,13 @@ def _snapshot_rows(results) -> list[dict]:
                 "freshness_score": comps.get("freshness"),
                 "documentation_score": comps.get("documentation"),
                 "ownership_score": comps.get("ownership"),
+                "signal_coverage": audited.score.coverage,
+                "score_version": audited.score.score_version,
+                "dataset_count": audited.score.dataset_count,
+                "rated_dataset_count": audited.score.rated_dataset_count,
+                "rated": audited.score.rated,
                 "rank_this_week": rank,
-                "written_to_datahub": True,
+                "written_to_datahub": audited.info.urn in written_urns,
             }
         )
     return rows
@@ -52,13 +62,17 @@ def main() -> None:
     print("[1/4] Auditor: computing Trust Scores...")
     results = audit_all_domains(graph)
     for a in results:
-        print(f"      {a.info.name:<24} {a.score.score:>5.1f}  {trust_tier(a.score.score)}")
+        print(
+            f"      {a.info.name:<24} {a.score.score:>5.1f}  "
+            f"{trust_tier(a.score.score, a.score.rated):<8} "
+            f"coverage {a.score.coverage:.0%}"
+        )
 
     print("\n[2/4] Scribe: writing back to the DataHub graph...")
-    scribe.write_all(graph, results=results)
+    write_report = scribe.write_all(graph, results=results)
 
     print("\n[3/4] Snapshot: saving the weekly history...")
-    week = save_weekly_snapshot(_snapshot_rows(results))
+    week = save_weekly_snapshot(_snapshot_rows(results, write_report.written_urns))
     print(f"      snapshot saved for the week of {week.isoformat()}")
 
     print("\n[4/4] Herald: publishing the leaderboard...")
@@ -73,4 +87,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli(main)

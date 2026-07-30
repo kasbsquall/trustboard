@@ -7,7 +7,7 @@ two engines.
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import Boolean, Date, DateTime, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -34,11 +34,23 @@ class DomainScore(Base):
     freshness_score: Mapped[float | None] = mapped_column(Numeric(5, 2))
     documentation_score: Mapped[float | None] = mapped_column(Numeric(5, 2))
     ownership_score: Mapped[float | None] = mapped_column(Numeric(5, 2))
+    # Share of the scoring weight backed by a signal that was actually present.
+    # Stored with the score because the two only mean something together: a 78
+    # at 0.45 coverage and a 78 at 1.0 are not the same claim.
+    signal_coverage: Mapped[float | None] = mapped_column(Numeric(4, 3))
+    # Scoring model that produced the row. Without it, a history chart silently
+    # plots numbers from two different models on one line.
+    score_version: Mapped[str | None] = mapped_column(String(16))
+    dataset_count: Mapped[int | None] = mapped_column(Integer)
+    # How many of those datasets had enough signal to judge, and whether the
+    # team's score means anything at all.
+    rated_dataset_count: Mapped[int | None] = mapped_column(Integer)
+    rated: Mapped[bool | None] = mapped_column(Boolean)
     rank_this_week: Mapped[int | None] = mapped_column(Integer)
     rank_last_week: Mapped[int | None] = mapped_column(Integer)
     written_to_datahub: Mapped[bool] = mapped_column(Boolean, default=False)
     datahub_property_urn: Mapped[str | None] = mapped_column(String(300))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
 
 class LeaderboardPost(Base):
@@ -49,4 +61,4 @@ class LeaderboardPost(Base):
     slack_message_ts: Mapped[str | None] = mapped_column(String(100))
     top_domain: Mapped[str | None] = mapped_column(String(200))
     most_improved_domain: Mapped[str | None] = mapped_column(String(200))
-    posted_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    posted_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))

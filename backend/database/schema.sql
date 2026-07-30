@@ -13,6 +13,19 @@ CREATE TABLE IF NOT EXISTS domain_scores (
     freshness_score DECIMAL(5,2),
     documentation_score DECIMAL(5,2),
     ownership_score DECIMAL(5,2),
+    -- Share of the scoring weight backed by a signal that was actually present.
+    -- Kept with the score: a 78 at 0.45 coverage is not the same claim as a 78
+    -- at 1.00, and reading either without the other is how a thin catalog turns
+    -- into a confident number.
+    signal_coverage DECIMAL(4,3),
+    -- Scoring model that produced the row. Rows from different versions are not
+    -- comparable, so a trend chart needs to know.
+    score_version VARCHAR(16),
+    dataset_count INT,
+    -- How many of those datasets had enough signal to judge, and whether the
+    -- team's score means anything at all.
+    rated_dataset_count INT,
+    rated BOOLEAN,
     rank_this_week INT,
     rank_last_week INT,
     written_to_datahub BOOLEAN DEFAULT false,

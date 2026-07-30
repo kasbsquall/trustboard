@@ -53,9 +53,16 @@ def save_weekly_snapshot(rows: list[dict], week_of: date | None = None) -> date:
             target.freshness_score = row.get("freshness_score")
             target.documentation_score = row.get("documentation_score")
             target.ownership_score = row.get("ownership_score")
+            target.signal_coverage = row.get("signal_coverage")
+            target.score_version = row.get("score_version")
+            target.dataset_count = row.get("dataset_count")
+            target.rated_dataset_count = row.get("rated_dataset_count")
+            target.rated = row.get("rated")
             target.rank_this_week = row.get("rank_this_week")
             target.rank_last_week = prev_ranks.get(row["domain_name"])
-            target.written_to_datahub = row.get("written_to_datahub", True)
+            # Defaults to False. Defaulting to True meant a caller that never
+            # wrote to DataHub still recorded that it had.
+            target.written_to_datahub = row.get("written_to_datahub", False)
             target.datahub_property_urn = row.get("datahub_property_urn")
             if existing is None:
                 session.add(target)
@@ -89,9 +96,16 @@ def load_seed_if_empty() -> int:
                     freshness_score=row.get("freshness_score"),
                     documentation_score=row.get("documentation_score"),
                     ownership_score=row.get("ownership_score"),
+                    signal_coverage=row.get("signal_coverage"),
+                    score_version=row.get("score_version"),
+                    dataset_count=row.get("dataset_count"),
+                    rated_dataset_count=row.get("rated_dataset_count"),
+                    rated=row.get("rated"),
                     rank_this_week=row.get("rank_this_week"),
                     rank_last_week=row.get("rank_last_week"),
-                    written_to_datahub=True,
+                    # The seed file is an export of a run that did write to
+                    # DataHub, and it records that per row rather than assuming it.
+                    written_to_datahub=row.get("written_to_datahub", False),
                 )
             )
             count += 1
@@ -154,16 +168,24 @@ def domain_history(domain_name: str) -> list[dict]:
 
 
 def record_leaderboard_post(week_of: date, top_domain: str, most_improved: str | None, ts: str | None = None) -> None:
+    """Records that the week's leaderboard was published (one row per week).
+
+    Upsert rather than insert. The weekly cycle is meant to be re-runnable, and
+    an insert here meant every re-run added another row for the same week, so
+    the posts table counted runs of the script instead of leaderboards posted.
+    """
     init_db()
+    week = _monday_of(week_of)
     with SessionLocal() as session:
-        session.add(
-            LeaderboardPost(
-                week_of=_monday_of(week_of),
-                top_domain=top_domain,
-                most_improved_domain=most_improved,
-                slack_message_ts=ts,
-            )
+        existing = session.scalar(
+            select(LeaderboardPost).where(LeaderboardPost.week_of == week)
         )
+        target = existing or LeaderboardPost(week_of=week)
+        target.top_domain = top_domain
+        target.most_improved_domain = most_improved
+        target.slack_message_ts = ts
+        if existing is None:
+            session.add(target)
         session.commit()
 
 
@@ -177,6 +199,12 @@ def _row_to_dict(r: DomainScore) -> dict:
         "freshness_score": float(r.freshness_score) if r.freshness_score is not None else None,
         "documentation_score": float(r.documentation_score) if r.documentation_score is not None else None,
         "ownership_score": float(r.ownership_score) if r.ownership_score is not None else None,
+        "signal_coverage": float(r.signal_coverage) if r.signal_coverage is not None else None,
+        "score_version": r.score_version,
+        "dataset_count": r.dataset_count,
+        "rated_dataset_count": r.rated_dataset_count,
+        "rated": None if r.rated is None else bool(r.rated),
         "rank_this_week": r.rank_this_week,
         "rank_last_week": r.rank_last_week,
+        "written_to_datahub": bool(r.written_to_datahub),
     }

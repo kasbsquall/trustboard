@@ -17,16 +17,10 @@ from pathlib import Path
 # Allows running the script directly (adds the project root to the path).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from datahub.metadata.schema_classes import TestResultsClass  # noqa: E402
+from datahub.metadata.schema_classes import TestResultsClass
 
-from mcp_client.datahub_connection import get_graph  # noqa: E402
-
-DOMAINS_QUERY = """
-{ listDomains(input: {start: 0, count: 50}) {
-    total
-    domains { urn properties { name } }
-} }
-"""
+from agents.auditor import list_domains
+from mcp_client.datahub_connection import cli, get_graph
 
 DATASET_COUNT_QUERY = """
 { search(input: {type: DATASET, query: "*", start: 0, count: 0}) { total } }
@@ -37,10 +31,13 @@ def main() -> None:
     graph = get_graph()
     print("Connected. Actor:", graph.execute_graphql("{ me { corpUser { username } } }")["me"]["corpUser"]["username"])
 
-    domains = graph.execute_graphql(DOMAINS_QUERY)["listDomains"]
-    print(f"\nDomains ({domains['total']}):")
-    for d in domains["domains"]:
-        name = (d.get("properties") or {}).get("name") or d["urn"]
+    # Deliberately the Auditor's own domain listing rather than listDomains,
+    # which returns root domains only. The smoke test used to report three
+    # domains on an instance where the audit went on to score six, and a check
+    # that disagrees with the thing it is checking is worse than no check.
+    domains = list_domains(graph)
+    print(f"\nDomains the Auditor will walk ({len(domains)}):")
+    for name in sorted(domains.values()):
         print(f"  - {name}")
 
     total_datasets = graph.execute_graphql(DATASET_COUNT_QUERY)["search"]["total"]
@@ -69,4 +66,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli(main)

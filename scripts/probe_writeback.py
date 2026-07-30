@@ -22,10 +22,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from datahub.emitter.mcp import MetadataChangeProposalWrapper  # noqa: E402
-from datahub.metadata.schema_classes import StructuredPropertyDefinitionClass  # noqa: E402
+from datahub.emitter.mcp import MetadataChangeProposalWrapper
+from datahub.metadata.schema_classes import StructuredPropertyDefinitionClass
 
-from mcp_client.datahub_connection import get_graph  # noqa: E402
+from mcp_client.datahub_connection import cli, get_graph
 
 PROP_URN = "urn:li:structuredProperty:io.trustboard.trustScore"
 PROP_QUALIFIED = "io.trustboard.trustScore"
@@ -161,4 +161,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cli(main)
