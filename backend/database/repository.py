@@ -139,7 +139,15 @@ def previous_week_scores(week_of: date | None = None) -> dict[str, float]:
     prev = week - timedelta(days=7)
     with SessionLocal() as session:
         rows = session.scalars(select(DomainScore).where(DomainScore.week_of == prev)).all()
-        return {r.domain_name: float(r.trust_score) for r in rows}
+        # Unrated rows are skipped rather than read as a score of 0.0. That zero
+        # means "could not measure", so comparing against it manufactured a
+        # 60-point gain for any team that went from unrated to silver, and the
+        # dashboard headline reads "most improved" straight off this comparison.
+        return {
+            r.domain_name: float(r.trust_score)
+            for r in rows
+            if r.rated is not False
+        }
 
 
 def current_leaderboard() -> list[dict]:

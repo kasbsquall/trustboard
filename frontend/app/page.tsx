@@ -135,11 +135,12 @@ export default async function Home() {
           <div className="headline__team">{leader.domain_name}</div>
           <p className="headline__sub">
             {leader.rank_last_week === 1 ? "Holds the top spot again" : "Takes the top spot"}
-            {/* "quality checks", not "data tests". The quality signal comes from
-                data assertions where a dataset has them and from catalog tests
-                where it does not, so naming one of the two would be wrong on
-                most of the datasets behind this number. */}
-            {quality != null ? `, with ${Math.round(quality)}% of quality checks passing` : ""}
+            {/* Not "% of checks passing". Quality counts passing checks against a
+                breadth target and discounts the catalog-test fallback, so it is a
+                score out of 100 and contains no pass rate at all. Printing it as a
+                percentage of checks reintroduced on the headline the exact framing
+                the model was rebuilt to remove. */}
+            {quality != null ? `, scoring ${Math.round(quality)} of 100 on quality` : ""}
             {leader.signal_coverage != null
               ? ` at ${Math.round(leader.signal_coverage * 100)}% signal coverage.`
               : "."}

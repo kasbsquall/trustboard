@@ -94,9 +94,15 @@ def test_a_domain_needs_half_its_datasets_judgeable():
     assert result.rated is False
 
 
-def test_the_domain_score_ignores_the_datasets_it_called_unratable():
-    # Averaging in a number we just declared meaningless would put it back into
-    # the team's score through the side door.
+def test_an_unrated_dataset_contributes_no_score_and_still_takes_up_room():
+    """It dilutes the team rather than disappearing from the arithmetic.
+
+    Excluding unrated datasets outright meant a team could raise its own score by
+    deleting the assertions on its worst tables: they became unrated, dropped out
+    of the average, and the team went from bronze to gold. Keeping their weight in
+    the denominator makes hiding a table cost exactly what leaving it broken costs,
+    so instrumenting it is always the better move.
+    """
     good = [_checks_and_fails(f"urn:li:dataset:g{i}") for i in range(3)]
     unchecked = [_no_checks("urn:li:dataset:u")]
 
@@ -104,8 +110,30 @@ def test_the_domain_score_ignores_the_datasets_it_called_unratable():
     without_gap = score_domain("Without", good)
 
     assert with_gap.rated is True
-    assert with_gap.score == without_gap.score
     assert with_gap.rated_dataset_count == 3
+    assert with_gap.dataset_count == 4
+    assert with_gap.score < without_gap.score
+
+
+def test_turning_the_checks_off_cannot_raise_the_team_score():
+    """The exploit, pinned directly.
+
+    A team with healthy tables and broken ones deletes the assertions on the
+    broken ones. Before, that was worth fifty points and a jump from bronze to
+    gold, with no failing check left behind to explain it.
+    """
+    healthy = [_checks_and_fails(f"urn:li:dataset:h{i}") for i in range(4)]
+    broken = [
+        DatasetSignals(urn=f"urn:li:dataset:b{i}", assertions_passing=0,
+                       assertions_failing=6, has_assertions=True)
+        for i in range(4)
+    ]
+    gone_dark = [DatasetSignals(urn=f"urn:li:dataset:b{i}") for i in range(4)]
+
+    honest = score_domain("Honest", healthy + broken)
+    hiding = score_domain("Hiding", healthy + gone_dark)
+
+    assert hiding.score <= honest.score
 
 
 def test_remediation_skips_unrated_assets_on_the_flag_not_on_coverage():

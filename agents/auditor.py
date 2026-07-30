@@ -55,6 +55,11 @@ from scoring.trust_score import (
 
 _MS_PER_DAY = 86_400_000
 
+
+def _today_ms() -> int:
+    """Now, floored to midnight UTC, so a score does not drift with the clock."""
+    return int(time.time() * 1000) // _MS_PER_DAY * _MS_PER_DAY
+
 # Search returns one page at a time. The old code asked for a single page of 200
 # and treated it as the whole graph, so dataset 201 onwards simply did not
 # exist as far as the score was concerned.
@@ -290,7 +295,11 @@ def extract_signals(
     Raises SignalReadError when an aspect cannot be read, so the caller can drop
     the dataset instead of scoring it on partial evidence.
     """
-    now_ms = now_ms or int(time.time() * 1000)
+    # Floored to the day. Freshness is days-since-change over a 30-day window, so
+    # an unfloored clock moved every score by about 0.14 points an hour with
+    # nothing in the graph changing, and the README's claim that two runs give
+    # identical scores held only within the same minute.
+    now_ms = now_ms or _today_ms()
 
     # Quality, fallback source: DataHub Tests. These check catalog compliance,
     # not the data, which is why assertions win when both are present.
@@ -357,7 +366,7 @@ def audit_all_domains(graph=None) -> list[AuditedDomain]:
     """Walks DataHub and returns the Trust Score of each domain (team)."""
     graph = graph or get_graph()
     domain_names = list_domains(graph)
-    now_ms = int(time.time() * 1000)
+    now_ms = _today_ms()
 
     urns = list_dataset_urns(graph)
     assertions = fetch_assertion_results(graph, urns)

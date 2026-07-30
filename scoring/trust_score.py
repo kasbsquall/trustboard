@@ -381,13 +381,29 @@ def score_domain(domain: str, signals: list[DatasetSignals]) -> DomainScore:
 
     dataset_scores = [score_dataset(s) for s in signals]
 
-    # Aggregate over the datasets we could actually judge. Averaging in the ones
-    # declared unrated would put a number we called meaningless back into the
-    # team's score through the side door.
     rated_scores = [ds for ds in dataset_scores if ds.rated]
 
-    # Weighted by blast radius rather than a flat mean.
-    total_weight = sum(ds.impact_weight for ds in rated_scores)
+    # An unrated dataset contributes no score and still occupies its weight.
+    #
+    # Excluding them outright was a hole big enough to drive the whole product
+    # through. A team with six healthy tables and six broken ones scored 50 and
+    # took bronze; deleting the assertions on the broken six made them unrated,
+    # dropped them out of the arithmetic entirely, and the same team scored 100
+    # and took gold. Fifty points for turning the lights off. That is the v2.0
+    # bug wearing a different hat, and this version was easier to exploit because
+    # it left no failing check behind to explain the jump.
+    #
+    # Keeping them in the denominator means an uninstrumented table dilutes the
+    # team in proportion to how much anything depends on it, so instrumenting a
+    # suspect table is now strictly better than hiding it: even a terrible score
+    # adds more to the numerator than nothing does.
+    #
+    # The trade-off, stated rather than buried: a team that has just adopted the
+    # catalog is diluted by its own backlog. That is defensible at team level, in
+    # a way it is not at asset level, because a team genuinely has not established
+    # trust in tables nobody checks. Individual assets keep the protection that
+    # matters: still no incident, still no score written, still not accused.
+    total_weight = sum(ds.impact_weight for ds in dataset_scores)
     avg_score = (
         sum(ds.score * ds.impact_weight for ds in rated_scores) / total_weight
         if total_weight

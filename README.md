@@ -83,7 +83,7 @@ that owns it.
 Model version 2.1. A weighted average of four components, each 0-100:
 
 ```
-Trust Score = 0.35 * quality        (passing assertions / total, else passing tests / total)
+Trust Score = 0.35 * quality        (checks passing, out of 4; catalog tests capped at 60%)
             + 0.25 * documentation  (description + field docs + glossary terms)
             + 0.20 * ownership      (has an assigned owner)
             + 0.20 * freshness      (days since the data changed, over a 30-day window)
@@ -103,6 +103,20 @@ as interchangeable. Freshness works the same way, and its weakest source, the me
 is labelled as such because on most ingestion setups that stamp moves whenever the crawler runs
 whether or not a row changed.
 
+**Quality counts checks that pass; it is never a pass rate.** `passing / (passing + failing)` pays a
+team to delete the checks that fail: ten checks with one passing scored 10, and deleting the nine
+failures scored 100. A breadth multiplier on top of the rate only softens that, because shrinking
+the denominator still wins, so the rate is gone. Quality counts the checks that currently pass,
+against a target of four.
+
+The consequence is deliberate: a failing check is worth exactly what a missing one is worth, which is
+nothing. A check that fails gives you no assurance about the data, so it buys no trust, and deleting
+it moves the score by zero rather than upward. The failure is priced where arithmetic cannot reach
+it, as an incident, and only when most of a dataset's checks are failing, because raising one per
+failure paged 30 of 67 datasets on the first run and DataHub already surfaces individual assertion
+failures. Catalog tests are capped at 60% of full marks, since a DataHub Test checks the catalog
+entry and an assertion checks the data.
+
 **Quality is required, and coverage has a floor.** If a signal is absent, its weight is removed and
 the rest renormalize, so a gap reads as reduced confidence rather than a hidden zero. That creates an
 obvious hole: a team with no tests would be scored on the three components it does have and could
@@ -117,10 +131,17 @@ scored 82.5. The metric was telling people to stop testing their data.
 
 Both guards are now in place. Coverage below 50% is unrated, and **no quality signal from either
 source is unrated regardless of coverage**, because there is no honest trust score for data nobody
-checks. A domain also needs half its datasets judgeable before its own number is published, and the
-aggregate is computed over only those, so a score we called meaningless cannot re-enter the team's
-figure through the side door. `tests/test_quality_required.py` pins all of it, including the
-comparison that used to come out backwards.
+checks. A domain also needs half its datasets judgeable before its own number is published. The aggregate
+takes its scores from the rated datasets and its denominator from all of them, which matters more
+than it sounds: excluding unrated datasets outright let a team raise its own score by fifty points
+and jump from bronze to gold purely by deleting the assertions on its worst tables, since those
+tables then vanished from the arithmetic instead of counting against it. Keeping their weight in the
+denominator makes hiding a table cost what leaving it broken costs, so instrumenting it is always the
+better move. The trade-off, stated rather than buried: a team is diluted by its own uninstrumented
+backlog. That is fair at team level, and individual assets keep the protection that matters, since
+they are still not scored, not tagged at-risk and not paged.
+`tests/test_quality_required.py` and `tests/test_quality_incentives.py` pin all of it, the latter
+exhaustively rather than by example, because a spot check passed against the broken version too.
 
 **Unrated is not a bad grade.** It gets its own tier, its own tag, and no incident, and the
 `trustScore` property is left **absent** rather than written as 0.0. That number is filterable in
@@ -262,7 +283,7 @@ python -m mcp_server.trustboard_mcp   # or run the MCP server for other agents t
 trustboard/
 ├── agents/            auditor, scribe, incidents, herald, gatekeeper, trust_lookup
 ├── scoring/           pure Trust Score logic
-├── tests/             63 tests: scoring model, quality requirement, policy gate,
+├── tests/             98 tests: scoring model, quality incentives, policy gate,
 │                   MCP boundary, gatekeeper degradation, aspect-reading rules
 ├── mcp_client/        authenticated DataHub connection (SDK, retry with backoff)
 ├── mcp_server/        FastMCP server exposing get_trust_score to other agents
@@ -285,7 +306,7 @@ trustboard/
   searches instead of a first-page-is-the-graph assumption, an unreadable aspect excluded rather
   than scored as absent, a run that refuses to publish when it loses more than 20% of the graph, a
   tool error over MCP that becomes a readable refusal instead of a `KeyError` inside the caller's
-  decision logic, every threshold derived from one table, 63 tests and CI. Idempotency is checked by
+  decision logic, every threshold derived from one table, 98 tests and CI. Idempotency is checked by
   running the pipeline twice and diffing, not by a test; see Limitations.
 - **Originality:** the score becomes shared context a second process consumes over MCP, with a
   three-outcome verdict that distinguishes bad data from unmeasured data, and governance is framed
@@ -314,7 +335,10 @@ Worth knowing before you point this at anything that matters.
   `load_seed_if_empty` only loads when the database is empty, so a deploy on a persistent volume
   keeps serving whichever run landed first until the volume is cleared.
 - **The write path is thinly tested.** The scoring model, the policy gate, the MCP boundary and the
-  aspect-reading rules have tests. `agents/scribe.py`, `agents/herald.py` and the backend do not, so
+  aspect-reading rules have tests, and so does the write path: `tests/test_scribe_writes.py` runs the
+  Scribe against a fake graph and asserts on the mutations it issues, `tests/test_mcp_surface.py`
+  spawns the real MCP server over stdio and calls every tool. `agents/herald.py` and the backend
+  still do not, so
   "every write is idempotent" rests on running the pipeline twice and diffing the output rather than
   on an assertion in CI. That is a real gap and it is the next thing worth building.
 - **The trend history is authored, not measured.** `scripts/seed_history.py` holds a per-team

@@ -113,7 +113,10 @@ def test_domain_score_ignores_datasets_it_cannot_judge():
     # Assert
     assert result.dataset_count == 2
     assert result.rated_dataset_count == 1
-    assert result.score == 100.0  # the one dataset that could be judged
+    # 100 on the one dataset that could be judged, halved because the other one
+    # still occupies its share of the team. Excluding it outright would let a team
+    # improve its score by removing the checks on its worst tables.
+    assert result.score == 50.0
     assert result.weakest_component in {"documentation", "ownership"}
 
 

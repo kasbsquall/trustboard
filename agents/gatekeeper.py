@@ -148,9 +148,16 @@ def evaluate(
     # Rated below the bar. The suggestion names the team to talk to, not a
     # substitute dataset: a churn table has no equivalent in another domain, so
     # offering one would be advice nobody can act on.
-    board = trustboard_client.call_tool("get_team_leaderboard")
-    teams = board if isinstance(board, list) else [board]
-    best_team = teams[0]["name"] if teams else None
+    # Guarded like the first call. This one only enriches the suggestion, so a
+    # failure here must not cost the caller the refusal it already earned: the
+    # gate answered, and losing the answer because the leaderboard was
+    # unreachable would turn a correct NO-GO into an exception.
+    try:
+        board = trustboard_client.call_tool("get_team_leaderboard")
+        teams = board if isinstance(board, list) else [board]
+        best_team = teams[0]["name"] if teams else None
+    except trustboard_client.ToolError:
+        best_team = None
 
     return Decision(
         task=task,
