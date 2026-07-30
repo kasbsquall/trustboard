@@ -151,3 +151,43 @@ def test_every_input_to_the_decision_comes_back(monkeypatch):
     assert verdict["coverage"] == 0.8
     assert verdict["score_version"] == "2.0"
     assert verdict["trust_score"] == 52.0
+
+
+def _payload(*, properties, tags):
+    return {"dataset": {
+        "name": "t", "structuredProperties": {"properties": properties},
+        "tags": {"tags": tags}, "domain": None, "exists": True,
+    }}
+
+
+def test_a_hand_applied_tier_tag_does_not_open_the_gate(monkeypatch):
+    """The badge is not the evidence.
+
+    The tier tag exists for people browsing the catalog, and anyone with edit
+    rights can apply it from the DataHub UI. It was read as an authority equal
+    to the property TrustBoard wrote, so a team could tag its own dataset
+    `trust.gold` and the gate meant to check that team waved it through with no
+    score behind it.
+    """
+    monkeypatch.setattr(trust_lookup, "execute_graphql_retry",
+                        lambda *a, **k: _payload(properties=[], tags=[{"tag": {"urn": "urn:li:tag:trust.gold"}}]))
+
+    assert trust_lookup.read_dataset_trust(_URN, graph=object())["trust_tier"] is None
+    verdict = trust_lookup.is_trustworthy(_URN, min_tier="gold", graph=object())
+    assert verdict["trustworthy"] is False
+    assert verdict["status"] == "unrated"
+
+
+def test_the_tag_is_honoured_when_trustboard_corroborates_it(monkeypatch):
+    # The point is corroboration, not distrust of tags: with TrustBoard's own
+    # write present, the tag remains a valid way to read the tier back.
+    monkeypatch.setattr(trust_lookup, "execute_graphql_retry", lambda *a, **k: _payload(
+        properties=[
+            {"structuredProperty": {"urn": trust_lookup.PROP_VERSION}, "values": [{"stringValue": "2.1"}]},
+            {"structuredProperty": {"urn": trust_lookup.PROP_SCORE}, "values": [{"numberValue": 91.0}]},
+        ],
+        tags=[{"tag": {"urn": "urn:li:tag:trust.gold"}}]))
+
+    verdict = trust_lookup.is_trustworthy(_URN, min_tier="gold", graph=object())
+    assert verdict["trustworthy"] is True
+    assert verdict["status"] == "rated"

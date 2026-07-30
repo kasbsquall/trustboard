@@ -146,7 +146,16 @@ def read_dataset_trust(urn: str, graph=None) -> dict:
     domain_urn = domain_block.get("urn")
     domain_trust = read_domain_trust(domain_urn, graph=graph) if domain_urn else {}
 
-    tier = sp["trust_tier"] or tag_tier
+    # The tag is a badge TrustBoard puts on for people browsing the catalog. It
+    # is not evidence, because anyone with edit rights can apply it by hand from
+    # the DataHub UI, and it was read as an authority equal to the property
+    # TrustBoard itself wrote: a self-applied `trust.gold` came back as
+    # `status: "rated", trustworthy: true` with a null score behind it, so the
+    # gate could be opened by the very team it was meant to check. The tag is
+    # accepted only when TrustBoard's own write corroborates it, which is what
+    # score_version proves. Anything else is unrated, the honest answer for an
+    # asset nobody has measured.
+    tier = sp["trust_tier"] or (tag_tier if sp["score_version"] else None)
     return {
         "urn": urn,
         "kind": "dataset",

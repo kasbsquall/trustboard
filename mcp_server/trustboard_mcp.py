@@ -16,15 +16,86 @@ annotations`. FastMCP inspects the real annotation objects when it registers a
 tool, and postponed evaluation would hand it plain strings, which fails with
 "issubclass() arg 1 must be a class".
 """
+from typing import Literal, TypedDict
+
 from mcp.server.fastmcp import FastMCP
 
 from agents import trust_lookup
 
 mcp = FastMCP("trustboard")
 
+# The return shapes, declared rather than described.
+#
+# These tools were annotated `-> dict`, which FastMCP cannot turn into an
+# outputSchema, so the contract this whole project rests on existed only as
+# English in a docstring. A foreign agent had no machine-readable way to learn
+# that `status` has three values, that `trust_score` is null on an asset we could
+# not measure, or that `found` is the key to check first. Prose is what a model
+# reads to choose WHICH tool to call; the schema is what it needs to use the
+# answer without guessing. The nullable fields say so in the type, because the
+# lookup layer returns an explicit None for anything it could not fill and a
+# caller has to handle that either way.
 
-@mcp.tool()
-def get_trust_score(urn: str) -> dict:
+
+class TrustInfo(TypedDict, total=False):
+    """What TrustBoard knows about one asset. Check `found` before anything else."""
+
+    urn: str
+    found: bool
+    kind: Literal["dataset", "domain"]
+    name: str | None
+    trust_score: float | None   # null when the asset is unrated
+    trust_tier: Literal["gold", "silver", "bronze", "at-risk", "unrated"] | None
+    coverage: float | None      # 0-1, share of the scoring weight backed by a real signal
+    score_version: str | None   # scores from different versions are not comparable
+    owning_team: str | None     # datasets only
+    team_trust_score: float | None
+    error: str                  # only when the URN is an entity type we do not score
+
+
+class Policy(TypedDict):
+    min_tier: str
+    on_unrated: str
+
+
+class Verdict(TypedDict, total=False):
+    """A gate decision. Read `status` before `trustworthy`.
+
+    "rated" means we measured it and applied the policy. "unrated" means nobody
+    has attached enough signal to judge it, which is a gap in the catalog and not
+    evidence the data is bad. "not_found" means it is not in DataHub.
+    """
+
+    urn: str
+    trustworthy: bool
+    status: Literal["rated", "unrated", "not_found"]
+    reason: str
+    kind: Literal["dataset", "domain"] | None
+    name: str | None
+    found: bool
+    trust_tier: str | None
+    trust_score: float | None
+    coverage: float | None
+    score_version: str | None
+    owning_team: str | None
+    team_trust_score: float | None
+    policy: Policy
+
+
+class TeamScore(TypedDict, total=False):
+    """One row of the weekly league, best first."""
+
+    domain: str
+    urn: str
+    name: str | None
+    trust_score: float | None
+    trust_tier: str | None
+    coverage: float | None
+    score_version: str | None
+
+
+@mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True, "openWorldHint": True})
+def get_trust_score(urn: str) -> TrustInfo:
     """Get the TrustBoard trust score and tier for a DataHub domain or dataset URN.
 
     Returns the trust_score (0-100) and trust_tier that TrustBoard computed and
@@ -39,8 +110,12 @@ def get_trust_score(urn: str) -> dict:
     return trust_lookup.read_trust(urn)
 
 
-@mcp.tool()
-def is_trustworthy(urn: str, min_tier: str = "silver", on_unrated: str = "block") -> dict:
+@mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True, "openWorldHint": True})
+def is_trustworthy(
+    urn: str,
+    min_tier: Literal["gold", "silver", "bronze", "at-risk"] = "silver",
+    on_unrated: Literal["block", "allow", "warn"] = "block",
+) -> Verdict:
     """Policy gate: does this DataHub asset meet a minimum trust tier?
 
     Use this before consuming a dataset in a pipeline, query or model. min_tier
@@ -59,8 +134,8 @@ def is_trustworthy(urn: str, min_tier: str = "silver", on_unrated: str = "block"
     return trust_lookup.is_trustworthy(urn, min_tier=min_tier, on_unrated=on_unrated)
 
 
-@mcp.tool()
-def get_team_leaderboard() -> list[dict]:
+@mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True, "openWorldHint": True})
+def get_team_leaderboard() -> list[TeamScore]:
     """Get the current TrustBoard leaderboard: teams ranked by trust score."""
     return trust_lookup.leaderboard()
 

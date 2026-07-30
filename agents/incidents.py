@@ -107,6 +107,28 @@ def remediate(graph, dataset_scores: list[DatasetScore], threshold: float = AT_R
     for ds in dataset_scores:
         if not ds.rated:
             skipped += 1
+            # Skipping the raise is right; skipping the resolve was not. A
+            # dataset that was at-risk last week and lost its quality signal this
+            # week becomes unrated, and `continue` here left its ticket open
+            # forever, so the graph ended up asserting both "at-risk, 26/100" and
+            # "we could not judge this" about the same asset. That is the exact
+            # outcome this project says must never happen, and the properties
+            # path already learned it: an unrated asset has its score removed
+            # rather than merely not rewritten. Incidents now do the same.
+            try:
+                for inc_urn in _active_incidents(graph, ds.urn):
+                    execute_graphql_retry(
+                        graph, _RESOLVE,
+                        variables={
+                            "urn": inc_urn,
+                            "msg": "Closing this: TrustBoard can no longer judge this dataset, "
+                                   "so the score behind the incident no longer stands. Add a "
+                                   "quality check and it will be scored again on the next run.",
+                        },
+                    )
+                    resolved += 1
+            except Exception:  # noqa: BLE001
+                failed += 1
             continue
         try:
             active = _active_incidents(graph, ds.urn)
