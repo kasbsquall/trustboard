@@ -24,6 +24,10 @@
   --tier-silver: oklch(76% 0.018 265);
   --tier-bronze: oklch(65% 0.095 55);
   --tier-risk: oklch(62% 0.16 28);
+  /* Unrated is deliberately the quietest tint on the board. It marks an asset
+     TrustBoard could not judge, and giving it the red of at-risk would accuse a
+     team of bad data on the strength of a gap in the catalog. */
+  --tier-unrated: oklch(60% 0.012 250);
 
   /* --- Primitive: signal (single accent, <5% of pixels) --- */
   --signal: oklch(70% 0.14 168);
@@ -379,6 +383,7 @@ a {
 .tier-silver .row__score { color: var(--tier-silver); }
 .tier-bronze .row__score { color: var(--tier-bronze); }
 .tier-at-risk .row__score { color: var(--tier-risk); }
+.tier-unrated .row__score { color: var(--tier-unrated); }
 
 .tier-tag {
   justify-self: end;
@@ -394,6 +399,7 @@ a {
 .tier-silver .tier-tag { color: var(--tier-silver); }
 .tier-bronze .tier-tag { color: var(--tier-bronze); }
 .tier-at-risk .tier-tag { color: var(--tier-risk); }
+.tier-unrated .tier-tag { color: var(--tier-unrated); }
 
 /* ============================================================
    Notes / colophon

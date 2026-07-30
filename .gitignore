@@ -34,3 +34,6 @@ docs/hackathon-notes.md
 
 # Playwright MCP artifacts
 .playwright-mcp/
+
+# Next.js incremental type-check cache
+frontend/tsconfig.tsbuildinfo

@@ -1,0 +1,35 @@
+# Lint configuration, pinned explicitly so CI checks the same rules on every
+# machine. Leaving it implicit means the set changes whenever ruff ships a new
+# default and a green build turns red without a line of code moving.
+
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # import sorting
+    "UP",     # pyupgrade
+    "B",      # bugbear
+    "SIM",    # simplify
+    "RUF",    # ruff-specific
+    "DTZ",    # naive datetimes
+    "PERF",   # obvious performance traps
+    "BLE",    # blind except: every one of ours carries a noqa saying why
+]
+ignore = [
+    "E501",    # line length is checked by the formatter, not the linter
+    "B008",    # FastAPI's Depends() in defaults is the framework's own idiom
+    "RUF001",  # ambiguous unicode: the prose in docstrings is deliberate
+    # The week bucket is a calendar week in the operator's own timezone, which is
+    # what a Monday morning leaderboard means. An aware UTC date would shift the
+    # bucket for anyone west of Greenwich on a Sunday night.
+    "DTZ011",
+    # The GraphQL mutations are built with % because their bodies are full of
+    # braces. An f-string would need every one of them doubled.
+    "UP031",
+]
+
+[lint.isort]
+known-first-party = ["agents", "backend", "config", "mcp_client", "mcp_server", "scoring"]

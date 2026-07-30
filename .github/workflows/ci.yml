@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python:
+    name: Python tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest ruff
+
+      # The scoring model, the policy gate and the aspect-reading rules all run
+      # without a DataHub instance on purpose: the logic lives in pure functions
+      # and fakes, so a regression fails here rather than in a demo.
+      - name: Tests
+        run: pytest tests/ -q
+
+      - name: Lint
+        run: ruff check .
+
+      # Every agent module has to import cleanly on a machine with no GMS. The
+      # MCP server in particular used to die at import time if DataHub was not
+      # up, which is exactly when an agent needs a readable error instead.
+      - name: Import check without DataHub
+        run: |
+          python -c "import agents.auditor, agents.scribe, agents.incidents"
+          python -c "import agents.trust_lookup, agents.gatekeeper, agents.herald"
+          python -c "import mcp_server.trustboard_mcp, backend.main, run_week"
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run build

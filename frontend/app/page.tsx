@@ -14,17 +14,26 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import { Logo } from "@/components/Logo";
 import { Sparkline } from "@/components/Sparkline";
-import { getLeaderboard, ordinal, tierOf, type Team } from "@/lib/api";
+import {
+  getLeaderboard,
+  getModel,
+  highestLeverage,
+  ordinal,
+  tierOf,
+  type ModelInfo,
+  type Team,
+} from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
-// One canonical name per component, matching the team detail page. The long
-// phrase is the description, not a second name for the same figure.
+// One canonical name per component, matching the team detail page. The weight
+// is not written here: it comes from the API with the scores, so the legend
+// cannot drift away from the model that produced the numbers above it.
 const SCORE_PARTS = [
-  { Icon: SealCheck, weight: "35%", name: "Quality", label: "data tests passing" },
-  { Icon: BookOpen, weight: "25%", name: "Documentation", label: "descriptions and glossary coverage" },
-  { Icon: UserCircle, weight: "20%", name: "Ownership", label: "datasets with an assigned owner" },
-  { Icon: ClockCounterClockwise, weight: "20%", name: "Freshness", label: "how recently datasets were updated" },
+  { Icon: SealCheck, key: "quality", name: "Quality", label: "data assertions passing, else catalog tests" },
+  { Icon: BookOpen, key: "documentation", name: "Documentation", label: "descriptions and glossary coverage" },
+  { Icon: UserCircle, key: "ownership", name: "Ownership", label: "datasets with an assigned owner" },
+  { Icon: ClockCounterClockwise, key: "freshness", name: "Freshness", label: "how recently the data itself changed" },
 ];
 
 const AGENTS = [
@@ -45,22 +54,28 @@ function deltaOf(team: Team) {
   };
 }
 
-function weakestOf(team: Team) {
-  const parts = [
-    ["quality", team.assertions_passing_pct],
-    ["documentation", team.documentation_score],
-    ["ownership", team.ownership_score],
-    ["freshness", team.freshness_score],
-  ].filter(([, v]) => v != null) as [string, number][];
-  if (parts.length === 0) return "No signals yet";
-  const [name, value] = parts.reduce((a, b) => (b[1] < a[1] ? b : a));
-  return `Weakest: ${name[0].toUpperCase()}${name.slice(1)} ${Math.round(value)}%`;
+function componentsOf(team: Team): Record<string, number | null> {
+  return {
+    quality: team.assertions_passing_pct,
+    documentation: team.documentation_score,
+    ownership: team.ownership_score,
+    freshness: team.freshness_score,
+  };
+}
+
+function subtitleOf(team: Team, model: ModelInfo) {
+  const best = highestLeverage(componentsOf(team), model.weights);
+  const coverage =
+    team.signal_coverage != null ? ` · ${Math.round(team.signal_coverage * 100)}% signal coverage` : "";
+  if (!best) return `No signals yet${coverage}`;
+  return `Fix first: ${best.name[0].toUpperCase()}${best.name.slice(1)} ${Math.round(best.value)}%${coverage}`;
 }
 
 export default async function Home() {
   let data;
+  let model: ModelInfo;
   try {
-    data = await getLeaderboard();
+    [data, model] = await Promise.all([getLeaderboard(), getModel()]);
   } catch {
     return (
       <main className="shell">
@@ -84,7 +99,7 @@ export default async function Home() {
   }
 
   const leader = teams[0];
-  const leaderTier = tierOf(leader.trust_score);
+  const leaderTier = tierOf(model, leader.trust_score, leader.rated !== false);
   const leaderDelta = deltaOf(leader);
   const quality = leader.assertions_passing_pct;
 
@@ -120,7 +135,14 @@ export default async function Home() {
           <div className="headline__team">{leader.domain_name}</div>
           <p className="headline__sub">
             {leader.rank_last_week === 1 ? "Holds the top spot again" : "Takes the top spot"}
-            {quality != null ? `, with ${Math.round(quality)}% of data tests passing.` : "."}
+            {/* "quality checks", not "data tests". The quality signal comes from
+                data assertions where a dataset has them and from catalog tests
+                where it does not, so naming one of the two would be wrong on
+                most of the datasets behind this number. */}
+            {quality != null ? `, with ${Math.round(quality)}% of quality checks passing` : ""}
+            {leader.signal_coverage != null
+              ? ` at ${Math.round(leader.signal_coverage * 100)}% signal coverage.`
+              : "."}
             {most_improved && most_improved.domain_name !== leader.domain_name && (
               <> {most_improved.domain_name} climbed the most, up {most_improved.score_delta.toFixed(1)} points.</>
             )}
@@ -154,7 +176,7 @@ export default async function Home() {
         </div>
 
         {teams.slice(1).map((team, i) => {
-          const tier = tierOf(team.trust_score);
+          const tier = tierOf(model, team.trust_score, team.rated !== false);
           const delta = deltaOf(team);
           const position = team.rank_this_week ?? i + 2;
           return (
@@ -168,7 +190,7 @@ export default async function Home() {
               <div className="row__rank tnum">{ordinal(position)}</div>
               <div>
                 <div className="row__team">{team.domain_name}</div>
-                <div className="row__datasets">{weakestOf(team)}</div>
+                <div className="row__datasets">{subtitleOf(team, model)}</div>
               </div>
               <div className="row__spark">
                 <Sparkline
@@ -192,10 +214,12 @@ export default async function Home() {
         <div>
           <h2>How the score works</h2>
           <ul className="legend">
-            {SCORE_PARTS.map(({ Icon, weight, name, label }) => (
+            {SCORE_PARTS.map(({ Icon, key, name, label }) => (
               <li key={name}>
                 <Icon size={15} weight="light" aria-hidden="true" />
-                <span className="legend__weight tnum">{weight}</span>
+                <span className="legend__weight tnum">
+                  {Math.round((model.weights[key] ?? 0) * 100)}%
+                </span>
                 <span>
                   <b>{name}</b> {label}
                 </span>
@@ -203,9 +227,18 @@ export default async function Home() {
             ))}
           </ul>
           <p className="legend__note">
-            Tiers: gold 80 and above, silver 60, bronze 40, at risk below 40. Missing signals are
-            removed and the rest renormalized, so a gap shows as reduced coverage instead of a
-            hidden zero.
+            Tiers:{" "}
+            {model.tiers
+              .map((t, i) =>
+                i === model.tiers.length - 1
+                  ? `${t.name.replace("-", " ")} below ${model.tiers[i - 1].min_score}`
+                  : `${t.name} ${t.min_score} and above`,
+              )
+              .join(", ")}
+            . Missing signals are removed and the rest renormalized, so a gap shows as reduced
+            coverage instead of a hidden zero. Below{" "}
+            {Math.round(model.min_coverage * 100)}% coverage a team is left unrated rather than
+            scored. Model v{model.version}.
           </p>
         </div>
         <div>

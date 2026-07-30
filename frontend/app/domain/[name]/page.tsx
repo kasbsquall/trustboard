@@ -13,42 +13,65 @@ import {
 } from "@phosphor-icons/react";
 import NumberFlow from "@number-flow/react";
 import { TrendChart } from "@/components/TrendChart";
-import { getHistory, getLeaderboard, ordinal, tierOf, type HistoryPoint, type Team } from "@/lib/api";
+import {
+  getHistory,
+  getLeaderboard,
+  getModel,
+  ordinal,
+  tierOf,
+  type HistoryPoint,
+  type ModelInfo,
+  type Team,
+} from "@/lib/api";
 
 /** An unranked neighbour has no position to show; "0th" is not one. */
 const rankLabel = (t: Team) => (t.rank_this_week ? `${ordinal(t.rank_this_week)} ` : "");
 
+// The weight of each component comes from the API, next to the scores it
+// produced, rather than being typed in again here where it can go stale.
 const SIGNALS = [
-  { key: "assertions_passing_pct", label: "Quality", weight: "35% of score", Icon: SealCheck },
-  { key: "documentation_score", label: "Documentation", weight: "25% of score", Icon: BookOpen },
-  { key: "ownership_score", label: "Ownership", weight: "20% of score", Icon: UserCircle },
-  { key: "freshness_score", label: "Freshness", weight: "20% of score", Icon: ClockCounterClockwise },
+  { key: "assertions_passing_pct", component: "quality", label: "Quality", Icon: SealCheck },
+  { key: "documentation_score", component: "documentation", label: "Documentation", Icon: BookOpen },
+  { key: "ownership_score", component: "ownership", label: "Ownership", Icon: UserCircle },
+  { key: "freshness_score", component: "freshness", label: "Freshness", Icon: ClockCounterClockwise },
 ] as const;
+
+/** The tier above the current one, and the score that reaches it. */
+function nextTier(model: ModelInfo, tier: string) {
+  const i = model.tiers.findIndex((t) => t.name === tier);
+  if (i <= 0) return null;
+  return { name: model.tiers[i - 1].name, at: model.tiers[i - 1].min_score };
+}
+
+function tierScale(model: ModelInfo) {
+  return model.tiers
+    .map((t, i) =>
+      i === model.tiers.length - 1
+        ? `${t.name.replace("-", " ")} below ${model.tiers[i - 1].min_score}`
+        : `${t.name} ${t.min_score} and above`,
+    )
+    .join(", ");
+}
 
 // Only link to DataHub when a public instance is configured. A local instance
 // is useless to anyone opening the deployed dashboard.
 const DATAHUB_URL = process.env.NEXT_PUBLIC_DATAHUB_URL;
 
-const NEXT_TIER: Record<string, { name: string; at: number } | null> = {
-  "at-risk": { name: "bronze", at: 40 },
-  bronze: { name: "silver", at: 60 },
-  silver: { name: "gold", at: 80 },
-  gold: null,
-};
-
 export default function DomainDetail({ params }: { params: { name: string } }) {
   const domain = decodeURIComponent(params.name);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [team, setTeam] = useState<Team | null>(null);
+  const [model, setModel] = useState<ModelInfo | null>(null);
   const [neighbours, setNeighbours] = useState<{ prev: Team | null; next: Team | null }>({ prev: null, next: null });
   const [total, setTotal] = useState(0);
   const [state, setState] = useState<"loading" | "ready" | "notfound" | "error">("loading");
 
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([getHistory(domain), getLeaderboard()])
-      .then(([h, board]) => {
+    Promise.all([getHistory(domain), getLeaderboard(), getModel()])
+      .then(([h, board, m]) => {
         if (controller.signal.aborted) return;
+        setModel(m);
         const idx = board.teams.findIndex((t) => t.domain_name === domain);
         if (h === null && idx < 0) {
           setState("notfound");
@@ -98,7 +121,7 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
     );
   }
 
-  if (state === "notfound" || !team) {
+  if (state === "notfound" || !team || !model) {
     return (
       <main className="shell">
         {backLink}
@@ -110,8 +133,8 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
   }
 
   const score = team.trust_score;
-  const tier = tierOf(score);
-  const next = NEXT_TIER[tier];
+  const tier = tierOf(model, score, team.rated !== false);
+  const next = nextTier(model, tier);
 
   return (
     <main className="shell">
@@ -163,18 +186,22 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
       </header>
 
       <p className="next-tier">
-        {next ? (
+        {tier === "unrated" ? (
+          <>
+            <b>Unrated.</b> Signal coverage was under{" "}
+            {Math.round(model.min_coverage * 100)}%, too little to publish a score.{" "}
+          </>
+        ) : next ? (
           <>
             <b>{(next.at - score).toFixed(1)} points</b> to reach {next.name} tier.{" "}
           </>
         ) : (
           <>
-            <b>Top tier.</b> Stay at 80 or above to hold gold.{" "}
+            <b>Top tier.</b> Stay at {model.tiers[0].min_score} or above to hold{" "}
+            {model.tiers[0].name}.{" "}
           </>
         )}
-        <span className="next-tier__scale">
-          Tiers: gold 80 and above, silver 60, bronze 40, at risk below 40.
-        </span>
+        <span className="next-tier__scale">Tiers: {tierScale(model)}.</span>
       </p>
 
       <section className="signals" aria-label="Score components">
@@ -187,7 +214,7 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
                 {value != null ? `${Math.round(value)}%` : "—"}
               </div>
               <div className="signal-cell__label">
-                {s.label} · {s.weight}
+                {s.label} · {Math.round((model.weights[s.component] ?? 0) * 100)}% of score
                 {value == null && <span className="signal-cell__na"> · not measured</span>}
               </div>
               <div className="signal-cell__bar">
@@ -204,9 +231,19 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
       </section>
 
       <p className="signals__note">
-        The team score is the average of its dataset scores, each renormalized over the
-        signals available for that dataset. These four figures are averages per component,
-        so they describe coverage rather than adding up to the score above.
+        The team score averages its dataset scores, weighting each dataset by how many
+        others read from it, and each dataset score is renormalized over the signals
+        available for it. These four figures are plain averages per component, so they
+        describe where the team stands on each rather than adding up to the score above.
+        {team.signal_coverage != null && (
+          <>
+            {" "}
+            Signal coverage this week was{" "}
+            <b>{Math.round(team.signal_coverage * 100)}%</b>
+            {team.dataset_count != null && <> across {team.dataset_count} datasets</>}
+            {team.score_version && <>, scored by model v{team.score_version}</>}.
+          </>
+        )}
       </p>
 
       <section className="chart-panel">

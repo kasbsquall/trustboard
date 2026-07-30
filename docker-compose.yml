@@ -1,7 +1,23 @@
-# TrustBoard's own infrastructure.
-# DataHub is brought up separately with its own quickstart (datahub docker
-# quickstart), which is why it is not included here. Port 5433 avoids clashing
-# with DataHub's internal PostgreSQL or with a local postgres on 5432.
+# TrustBoard's optional PostgreSQL, for running the score history on Postgres
+# instead of the default SQLite. DataHub is brought up separately with its own
+# quickstart (datahub docker quickstart), which is why it is not here.
+#
+#   TRUSTBOARD_DB_PASSWORD=$(openssl rand -base64 24) docker compose up -d
+#
+# Then point TrustBoard at it:
+#   DATABASE_URL=postgresql://trustboard:<that password>@127.0.0.1:5433/trustboard
+#
+# Two things here are deliberate and should not be "simplified" back:
+#
+#   The port is bound to 127.0.0.1, not to every interface. `"5433:5432"` means
+#   0.0.0.0, which on a machine with a public IP publishes the database to the
+#   internet, where scanners find it in minutes. Nothing outside this host needs
+#   to reach it.
+#
+#   There is no default password. A database whose credentials are in a file on
+#   GitHub has no credentials, and `trustboard/trustboard` is the first guess any
+#   scanner makes. Compose fails to start until the variable is set, which is the
+#   point.
 
 services:
   trustboard-db:
@@ -9,10 +25,12 @@ services:
     container_name: trustboard-db
     environment:
       POSTGRES_USER: trustboard
-      POSTGRES_PASSWORD: trustboard
+      POSTGRES_PASSWORD: ${TRUSTBOARD_DB_PASSWORD:?set TRUSTBOARD_DB_PASSWORD to a strong unique value}
       POSTGRES_DB: trustboard
     ports:
-      - "5433:5432"
+      # Port 5433 on the host avoids clashing with DataHub's internal PostgreSQL
+      # or a local postgres on 5432.
+      - "127.0.0.1:5433:5432"
     volumes:
       - trustboard_pgdata:/var/lib/postgresql/data
       - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
@@ -21,6 +39,10 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    # Caps so a runaway query, or anything that gets in, cannot take the whole
+    # host with it.
+    mem_limit: 512m
+    cpus: 0.5
 
 volumes:
   trustboard_pgdata:
