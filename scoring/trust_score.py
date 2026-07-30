@@ -5,30 +5,119 @@ scores. That makes it packageable as a reusable DataHub Skill
 (datahub-skill-contribution/) and testable in isolation.
 
 A dataset's Trust Score combines four components (0-100), each with a weight. A
-component can be ABSENT (for example a dataset with no tests or no lineage). In
-that case it is not counted as a silent zero: the weights are renormalized over
-the available components and the coverage is reported, so that the score does
-not hide a penalty for a missing signal.
+component can be ABSENT (for example a dataset with no assertions and no
+tests). It is not counted as a silent zero: the weights are renormalized over
+the available components and the coverage is reported alongside the score, so a
+gap reads as reduced confidence in the number rather than as a hidden penalty.
 
-A domain's (team's) Trust Score is the average of its datasets' scores.
+Two things follow from that, and both are enforced here rather than left to the
+caller:
+
+  - Coverage travels with every score, at dataset AND domain level, and a
+    domain whose mean coverage falls below MIN_COVERAGE is returned UNRATED
+    instead of scored. Renormalizing over one surviving signal produces a
+    confident-looking number from almost no evidence, which is worse than
+    admitting there is not enough to judge.
+  - A domain's score weights each dataset by its downstream blast radius. An
+    unweighted mean lets an abandoned scratch table drag a team down as hard as
+    the table forty dashboards read from, which is not how anyone actually
+    experiences data trust.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
+from enum import StrEnum
 
 # Weights of the composite score. They add up to 1.0.
 WEIGHTS = {
-    "quality": 0.35,        # % of quality tests that pass
+    "quality": 0.35,        # assertions passing, else metadata tests passing
     "documentation": 0.25,  # description + field docs + glossary
     "ownership": 0.20,      # the dataset has an owner assigned
-    "freshness": 0.20,      # how recent the lineage/update is
+    "freshness": 0.20,      # how recently the data itself changed
 }
 
 # Freshness window: at FRESHNESS_WINDOW_DAYS days, the freshness score reaches
 # 0. A dataset updated today scores 100.
 FRESHNESS_WINDOW_DAYS = 30.0
 
-SCORE_VERSION = "1.0"
+# Below this share of the weight, a domain is not scored at all. 0.45 is the
+# floor where documentation plus ownership alone would carry a score: those two
+# are always present, so anything at or under it means quality and freshness
+# were both missing and the "score" would be a metadata-completeness figure
+# wearing a trust label.
+MIN_COVERAGE = 0.50
+
+# Quality is required, not merely weighted. A coverage floor alone does not
+# protect the score, and reasoning about documentation plus ownership missed it:
+# freshness is nearly free, because its last fallback is an audit stamp that
+# moves whenever the crawler runs. So a team that has never written a single
+# check reaches 0.65 coverage, clears the floor, and scores 100 out of three
+# maxed components, while a team that runs real assertions and fails half of
+# them scores 82.5. That is a metric telling people to stop testing their data.
+# With no quality signal from either source, the asset is unrated. There is no
+# honest trust score for data nobody checks.
+QUALITY_REQUIRED = True
+
+SCORE_VERSION = "2.1"
+
+# The tier cut-offs, in descending order, defined once. Six places used to spell
+# them out: this table, the API, the Slack footer, two property descriptions and
+# the scorecard, and one of them (the Slack footer) imported nothing from here,
+# so a weight change would have had the weekly message state a model that was no
+# longer in use. Everything that mentions a threshold now derives it from here.
+TIERS: tuple[tuple[str, float], ...] = (
+    ("gold", 80.0),
+    ("silver", 60.0),
+    ("bronze", 40.0),
+    ("at-risk", 0.0),
+)
+
+# The tier at which TrustBoard opens an incident: anything below bronze.
+AT_RISK_THRESHOLD = dict(TIERS)["bronze"]
+
+
+def tier_scale_text() -> str:
+    """The cut-offs as one sentence, for anywhere a human reads them."""
+    parts = [
+        f"{name} {int(floor)}+" if floor else f"{name.replace('-', ' ')} below {int(TIERS[i - 1][1])}"
+        for i, (name, floor) in enumerate(TIERS)
+    ]
+    return "Tiers: " + ", ".join(parts) + "."
+
+
+def weights_text() -> str:
+    """The weights as one sentence, derived from WEIGHTS."""
+    return " + ".join(f"{w:.0%} {name}" for name, w in WEIGHTS.items())
+
+
+class QualitySource(StrEnum):
+    """Where the quality component came from, in order of what it means.
+
+    ASSERTIONS is a statement about the data. TESTS is a statement about the
+    metadata (DataHub Tests check catalog compliance). They are not
+    interchangeable, so the score reports which one it used instead of quietly
+    presenting them as the same thing.
+    """
+
+    ASSERTIONS = "assertions"
+    TESTS = "metadata-tests"
+    NONE = "none"
+
+
+class FreshnessSource(StrEnum):
+    """Where the freshness component came from, in order of what it means.
+
+    OPERATIONS is when the data last changed. PROFILE is when the data was last
+    profiled, a decent proxy. METADATA is the aspect's own audit stamp, which
+    often reflects the last ingestion run rather than anything about the data,
+    and is reported as such so nobody mistakes it for data recency.
+    """
+
+    OPERATIONS = "operations"
+    PROFILE = "profile"
+    METADATA = "metadata-timestamp"
+    NONE = "none"
 
 
 @dataclass(frozen=True)
@@ -36,14 +125,27 @@ class DatasetSignals:
     """Raw signals extracted from DataHub for a dataset."""
 
     urn: str
+
+    # Quality, preferred source: real data assertions.
+    assertions_passing: int = 0
+    assertions_failing: int = 0
+    has_assertions: bool = False
+
+    # Quality, fallback source: DataHub Tests (metadata compliance).
     tests_passing: int = 0
     tests_failing: int = 0
     has_tests: bool = False
+
     has_description: bool = False
     has_field_docs: bool = False
     has_glossary_terms: bool = False
     has_owner: bool = False
+
     freshness_days: float | None = None  # None => signal absent
+    freshness_source: FreshnessSource = FreshnessSource.NONE
+
+    # How many downstream entities read this dataset, for blast-radius weighting.
+    downstream_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -70,6 +172,13 @@ class DatasetScore:
     score: float
     components: ComponentBreakdown
     coverage: float  # fraction of weight covered by the available signals
+    quality_source: QualitySource = QualitySource.NONE
+    freshness_source: FreshnessSource = FreshnessSource.NONE
+    impact_weight: float = 1.0  # blast radius, used when aggregating
+    # False when there is no quality signal at all, or coverage is below the
+    # floor. An unrated dataset has a score of 0.0 that means nothing; read this
+    # before the number.
+    rated: bool = True
 
 
 @dataclass(frozen=True)
@@ -77,20 +186,39 @@ class DomainScore:
     domain: str
     score: float
     dataset_count: int
+    # How many of those datasets were judgeable. The gap between the two is the
+    # size of the catalog gap, and it belongs next to the score.
+    rated_dataset_count: int = 0
+    coverage: float = 0.0  # mean share of weight the signals actually covered
+    # False when coverage fell below MIN_COVERAGE, or when fewer than half the
+    # datasets had a quality signal. An unrated domain's score is 0.0 and means
+    # nothing; never write that number anywhere a filter can read it.
+    rated: bool = True
     # average of each component over the datasets where it was available
     component_averages: dict[str, float] = field(default_factory=dict)
     weakest_component: str | None = None
+    # how many datasets contributed each quality/freshness source, so a reader
+    # can tell a score built on assertions from one built on metadata tests
+    quality_sources: dict[str, int] = field(default_factory=dict)
+    freshness_sources: dict[str, int] = field(default_factory=dict)
+    score_version: str = SCORE_VERSION
 
 
 def _clamp(value: float) -> float:
     return max(0.0, min(100.0, value))
 
 
-def _quality(s: DatasetSignals) -> float | None:
-    total = s.tests_passing + s.tests_failing
-    if not s.has_tests or total == 0:
-        return None
-    return _clamp(s.tests_passing / total * 100.0)
+def _quality(s: DatasetSignals) -> tuple[float | None, QualitySource]:
+    """Assertions first, metadata tests only as a fallback."""
+    assertion_total = s.assertions_passing + s.assertions_failing
+    if s.has_assertions and assertion_total > 0:
+        return _clamp(s.assertions_passing / assertion_total * 100.0), QualitySource.ASSERTIONS
+
+    test_total = s.tests_passing + s.tests_failing
+    if s.has_tests and test_total > 0:
+        return _clamp(s.tests_passing / test_total * 100.0), QualitySource.TESTS
+
+    return None, QualitySource.NONE
 
 
 def _documentation(s: DatasetSignals) -> float:
@@ -113,10 +241,23 @@ def _freshness(s: DatasetSignals) -> float | None:
     return _clamp(100.0 - decay)
 
 
+def impact_weight(downstream_count: int) -> float:
+    """How much a dataset's score counts toward its team's, by blast radius.
+
+    Logarithmic on purpose. Linear weighting would let one heavily consumed
+    table swamp everything else, and equal weighting is what makes an orphaned
+    scratch table as damaging as a table forty dashboards depend on. log1p
+    gives a table with twenty consumers roughly four times the pull of an
+    unused one, not twenty times.
+    """
+    return 1.0 + math.log1p(max(0, downstream_count))
+
+
 def score_dataset(s: DatasetSignals) -> DatasetScore:
     """Computes a dataset's Trust Score, renormalizing over what is available."""
+    quality, quality_source = _quality(s)
     components = {
-        "quality": _quality(s),
+        "quality": quality,
         "documentation": _documentation(s),
         "ownership": _ownership(s),
         "freshness": _freshness(s),
@@ -136,21 +277,58 @@ def score_dataset(s: DatasetSignals) -> DatasetScore:
         ownership=components["ownership"],
         freshness=components["freshness"],
     )
+    coverage = round(available_weight, 2)
+    has_quality = quality is not None
+    rated = coverage >= MIN_COVERAGE and (has_quality or not QUALITY_REQUIRED)
+
     return DatasetScore(
         urn=s.urn,
         score=round(_clamp(weighted), 2),
         components=breakdown,
-        coverage=round(available_weight, 2),
+        coverage=coverage,
+        quality_source=quality_source,
+        freshness_source=s.freshness_source if components["freshness"] is not None else FreshnessSource.NONE,
+        impact_weight=round(impact_weight(s.downstream_count), 3),
+        rated=rated,
+    )
+
+
+def _weakest_by_leverage(component_averages: dict[str, float]) -> str | None:
+    """The component where fixing things moves the score most.
+
+    Not the lowest absolute value. A component at 40 carrying 20% of the weight
+    has less leverage than one at 55 carrying 35%, so pointing a team at the
+    former is advice that costs them effort and barely moves their rank.
+    Leverage is weight times headroom.
+    """
+    if not component_averages:
+        return None
+    return max(
+        component_averages,
+        key=lambda c: WEIGHTS[c] * (100.0 - component_averages[c]),
     )
 
 
 def score_domain(domain: str, signals: list[DatasetSignals]) -> DomainScore:
     """Aggregates a domain's dataset scores into the team's Trust Score."""
     if not signals:
-        return DomainScore(domain=domain, score=0.0, dataset_count=0)
+        return DomainScore(domain=domain, score=0.0, dataset_count=0, rated=False)
 
     dataset_scores = [score_dataset(s) for s in signals]
-    avg_score = sum(ds.score for ds in dataset_scores) / len(dataset_scores)
+
+    # Aggregate over the datasets we could actually judge. Averaging in the ones
+    # declared unrated would put a number we called meaningless back into the
+    # team's score through the side door.
+    rated_scores = [ds for ds in dataset_scores if ds.rated]
+
+    # Weighted by blast radius rather than a flat mean.
+    total_weight = sum(ds.impact_weight for ds in rated_scores)
+    avg_score = (
+        sum(ds.score * ds.impact_weight for ds in rated_scores) / total_weight
+        if total_weight
+        else 0.0
+    )
+    mean_coverage = sum(ds.coverage for ds in dataset_scores) / len(dataset_scores)
 
     # Per-component average over the datasets where it was available.
     component_averages: dict[str, float] = {}
@@ -163,23 +341,40 @@ def score_domain(domain: str, signals: list[DatasetSignals]) -> DomainScore:
         if values:
             component_averages[comp] = round(sum(values) / len(values), 2)
 
-    weakest = min(component_averages, key=component_averages.get) if component_averages else None
+    quality_sources: dict[str, int] = {}
+    freshness_sources: dict[str, int] = {}
+    for ds in dataset_scores:
+        quality_sources[ds.quality_source.value] = quality_sources.get(ds.quality_source.value, 0) + 1
+        freshness_sources[ds.freshness_source.value] = freshness_sources.get(ds.freshness_source.value, 0) + 1
+
+    # Half the datasets have to be judgeable before the team's number means
+    # anything. One instrumented table out of twenty does not describe a team.
+    rated = mean_coverage >= MIN_COVERAGE and len(rated_scores) * 2 >= len(dataset_scores)
 
     return DomainScore(
         domain=domain,
-        score=round(_clamp(avg_score), 2),
+        score=round(_clamp(avg_score), 2) if rated else 0.0,
+        rated_dataset_count=len(rated_scores),
         dataset_count=len(signals),
+        coverage=round(mean_coverage, 2),
+        rated=rated,
         component_averages=component_averages,
-        weakest_component=weakest,
+        weakest_component=_weakest_by_leverage(component_averages),
+        quality_sources=quality_sources,
+        freshness_sources=freshness_sources,
     )
 
 
-def trust_tier(score: float) -> str:
-    """Translates a Trust Score into a tier (for Gold/Silver/Bronze tags and badges)."""
-    if score >= 80:
-        return "gold"
-    if score >= 60:
-        return "silver"
-    if score >= 40:
-        return "bronze"
-    return "at-risk"
+def trust_tier(score: float, rated: bool = True) -> str:
+    """Translates a Trust Score into a tier (for tags and badges).
+
+    An unrated domain is not at-risk. Conflating "we could not measure this"
+    with "this is bad" is how a governance tool loses the room: the team gets
+    punished for a gap in the catalog rather than told what to fix.
+    """
+    if not rated:
+        return "unrated"
+    for name, floor in TIERS:
+        if score >= floor:
+            return name
+    return TIERS[-1][0]

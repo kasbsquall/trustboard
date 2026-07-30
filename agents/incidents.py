@@ -14,10 +14,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from mcp_client.datahub_connection import execute_graphql_retry
-from scoring.trust_score import DatasetScore
+from scoring.trust_score import AT_RISK_THRESHOLD, WEIGHTS, DatasetScore
 
 TITLE_PREFIX = "TrustBoard:"
-AT_RISK_THRESHOLD = 40.0
 
 _QUERY_INCIDENTS = """
 query i($urn: String!) {
@@ -44,6 +43,10 @@ class IncidentReport:
     resolved: int = 0
     unchanged: int = 0
     failed: int = 0
+    # Datasets whose signal coverage was too low to judge. Reported apart from
+    # unchanged so a run over a thinly catalogued graph does not look like a run
+    # where everything was already fine.
+    skipped_unrated: int = 0
 
 
 def _short_name(dataset_urn: str) -> str:
@@ -54,8 +57,16 @@ def _short_name(dataset_urn: str) -> str:
 
 
 def _weakest(ds: DatasetScore) -> str:
+    """Highest-leverage component: weight times room to improve.
+
+    Same rule the domain scorecard uses. Picking the lowest raw value instead
+    would have the incident and the scorecard point a team at two different
+    signals for the same problem.
+    """
     comps = {k: v for k, v in ds.components.as_dict().items() if v is not None}
-    return min(comps, key=comps.get) if comps else "quality"
+    if not comps:
+        return "quality"
+    return max(comps, key=lambda c: WEIGHTS[c] * (100.0 - comps[c]))
 
 
 def _active_incidents(graph, dataset_urn: str) -> list[str]:
@@ -83,10 +94,20 @@ def remediate(graph, dataset_scores: list[DatasetScore], threshold: float = AT_R
     Failures are counted apart from no-ops. Folding them into 'unchanged'
     turns a run where every call errored into a summary that reads exactly
     like a run where there was nothing to do.
+
+    An unrated dataset never gets an incident, and the test is the scorer's own
+    `rated` flag rather than a coverage comparison repeated here. Re-deriving the
+    rule locally missed the case it exists for: a table nobody checks can still
+    have 0.65 coverage from documentation, ownership and a crawler timestamp, so a
+    coverage test would have waved it through and paged somebody about data that
+    was never measured.
     """
-    raised = resolved = unchanged = failed = 0
+    raised = resolved = unchanged = failed = skipped = 0
 
     for ds in dataset_scores:
+        if not ds.rated:
+            skipped += 1
+            continue
         try:
             active = _active_incidents(graph, ds.urn)
         except Exception:  # noqa: BLE001
@@ -119,4 +140,10 @@ def remediate(graph, dataset_scores: list[DatasetScore], threshold: float = AT_R
         else:
             unchanged += 1
 
-    return IncidentReport(raised=raised, resolved=resolved, unchanged=unchanged, failed=failed)
+    return IncidentReport(
+        raised=raised,
+        resolved=resolved,
+        unchanged=unchanged,
+        failed=failed,
+        skipped_unrated=skipped,
+    )

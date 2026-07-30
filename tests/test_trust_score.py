@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scoring.trust_score import (  # noqa: E402
+from scoring.trust_score import (
     DatasetSignals,
     score_dataset,
     score_domain,
@@ -87,8 +87,11 @@ def test_quality_is_pass_ratio():
     assert result.components.quality == 75.0
 
 
-def test_domain_score_averages_datasets():
-    # Arrange: two datasets, one perfect and one empty.
+def test_domain_score_ignores_datasets_it_cannot_judge():
+    # Arrange: two datasets, one perfect and one with no signals at all. The
+    # empty one has no quality signal, so it is unrated and excluded rather than
+    # averaged in as a zero. It still counts toward dataset_count, because the
+    # gap is real and belongs in the report.
     perfect = DatasetSignals(
         urn="urn:li:dataset:d.1",
         tests_passing=4,
@@ -107,7 +110,8 @@ def test_domain_score_averages_datasets():
 
     # Assert
     assert result.dataset_count == 2
-    assert result.score == 50.0  # (100 + 0) / 2
+    assert result.rated_dataset_count == 1
+    assert result.score == 100.0  # the one dataset that could be judged
     assert result.weakest_component in {"documentation", "ownership"}
 
 
