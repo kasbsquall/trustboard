@@ -59,6 +59,17 @@ MIN_COVERAGE = 0.50
 # honest trust score for data nobody checks.
 QUALITY_REQUIRED = True
 
+# How many PASSING checks a dataset needs to earn full quality marks. Four is the
+# number of distinct things worth asserting about most tables (row count, nulls
+# in the key, uniqueness, freshness), so it is a floor for "somebody thought
+# about this table", not a target to grind.
+BREADTH_TARGET = 4
+
+# The most a dataset can score on quality when the only evidence is DataHub
+# Tests. They check the catalog entry, not the data, and the rest of this module
+# is built on refusing to present those as the same claim.
+TESTS_FALLBACK_CAP = 0.6
+
 SCORE_VERSION = "2.1"
 
 # The tier cut-offs, in descending order, defined once. Six places used to spell
@@ -175,6 +186,10 @@ class DatasetScore:
     quality_source: QualitySource = QualitySource.NONE
     freshness_source: FreshnessSource = FreshnessSource.NONE
     impact_weight: float = 1.0  # blast radius, used when aggregating
+    # Checks that are failing right now. The score does not price these, because
+    # any formula that did would pay a team to delete them. They are surfaced as
+    # an incident instead, which is a thing a person has to close.
+    failing_checks: int = 0
     # False when there is no quality signal at all, or coverage is below the
     # floor. An unrated dataset has a score of 0.0 that means nothing; read this
     # before the number.
@@ -208,15 +223,43 @@ def _clamp(value: float) -> float:
     return max(0.0, min(100.0, value))
 
 
-def _quality(s: DatasetSignals) -> tuple[float | None, QualitySource]:
-    """Assertions first, metadata tests only as a fallback."""
-    assertion_total = s.assertions_passing + s.assertions_failing
-    if s.has_assertions and assertion_total > 0:
-        return _clamp(s.assertions_passing / assertion_total * 100.0), QualitySource.ASSERTIONS
+def _quality_from(passing: int, cap: float) -> float:
+    """Quality earned by `passing` checks that currently pass.
 
-    test_total = s.tests_passing + s.tests_failing
-    if s.has_tests and test_total > 0:
-        return _clamp(s.tests_passing / test_total * 100.0), QualitySource.TESTS
+    Counted, not averaged, and this is the whole point. Quality used to be
+    `passing / (passing + failing)`, and any formula containing a pass RATE pays
+    a team to delete the checks that fail: ten checks with one passing scored 10,
+    and deleting the nine failures scored 100. Adding a breadth multiplier only
+    softened it, 68.5 to 73.75, because shrinking the denominator still won.
+    There is no way to price a rate that does not reward deletion, so the rate is
+    gone.
+
+    What replaces it: a failing assertion is worth exactly what a missing one is
+    worth, which is nothing. That is not leniency, it is what the word means. A
+    check that fails gives you no assurance about the data, so it buys no trust,
+    and deleting it therefore changes the score by zero. Adding one can only
+    help, whether it passes today or not, because passing it later is the only
+    way to move the number.
+
+    The failure itself is not ignored, it is just not priced here. It opens an
+    incident on the dataset, which is a thing a person has to close, and no
+    arithmetic makes that go away.
+    """
+    return _clamp(min(1.0, passing / BREADTH_TARGET) * 100.0 * cap)
+
+
+def _quality(s: DatasetSignals) -> tuple[float | None, QualitySource]:
+    """Assertions first, metadata tests only as a discounted fallback."""
+    if s.has_assertions and (s.assertions_passing + s.assertions_failing) > 0:
+        return _quality_from(s.assertions_passing, 1.0), QualitySource.ASSERTIONS
+
+    if s.has_tests and (s.tests_passing + s.tests_failing) > 0:
+        # Capped, because a DataHub Test checks the catalog entry and an
+        # assertion checks the data. This module has always said those are
+        # different claims and then paid them the same, so a team could reach
+        # full quality marks without anything ever looking at a row. The cap is
+        # what makes the distinction cost something.
+        return _quality_from(s.tests_passing, TESTS_FALLBACK_CAP), QualitySource.TESTS
 
     return None, QualitySource.NONE
 
@@ -256,6 +299,9 @@ def impact_weight(downstream_count: int) -> float:
 def score_dataset(s: DatasetSignals) -> DatasetScore:
     """Computes a dataset's Trust Score, renormalizing over what is available."""
     quality, quality_source = _quality(s)
+    failing = s.assertions_failing if quality_source is QualitySource.ASSERTIONS else (
+        s.tests_failing if quality_source is QualitySource.TESTS else 0
+    )
     components = {
         "quality": quality,
         "documentation": _documentation(s),
@@ -290,6 +336,7 @@ def score_dataset(s: DatasetSignals) -> DatasetScore:
         freshness_source=s.freshness_source if components["freshness"] is not None else FreshnessSource.NONE,
         impact_weight=round(impact_weight(s.downstream_count), 3),
         rated=rated,
+        failing_checks=failing,
     )
 
 

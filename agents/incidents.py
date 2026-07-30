@@ -135,15 +135,34 @@ def remediate(graph, dataset_scores: list[DatasetScore], threshold: float = AT_R
         except Exception:  # noqa: BLE001
             failed += 1
             continue
-        is_toxic = ds.score < threshold
+        # Two ways to earn an incident, and the second is why the score can
+        # afford not to punish failures. Quality counts passing checks only, so
+        # deleting a failing one cannot raise the number; the failure is priced
+        # here instead, where the only way to clear it is to fix the check or
+        # admit it was wrong and remove it deliberately, both of which a person
+        # has to do and neither of which arithmetic can fake.
+        is_toxic = ds.score < threshold or ds.failing_checks > 0
 
         if is_toxic and not active:
             weak = _weakest(ds)
-            title = f"{TITLE_PREFIX} {_short_name(ds.urn)} is at-risk ({ds.score:.0f}/100)"
-            desc = (
-                f"Trust Score {ds.score:.0f}/100, below the {threshold:.0f} threshold. "
-                f"Weakest signal: **{weak}**. Improving {weak} will clear this incident."
-            )
+            if ds.failing_checks:
+                n = ds.failing_checks
+                title = (
+                    f"{TITLE_PREFIX} {_short_name(ds.urn)} has "
+                    f"{n} failing quality check{'s' if n > 1 else ''}"
+                )
+                desc = (
+                    f"{n} quality check{'s are' if n > 1 else ' is'} failing on this dataset. "
+                    f"Trust Score is {ds.score:.0f}/100. A failing check earns no trust and no "
+                    "penalty, so the score cannot be recovered by deleting it: fix the check, or "
+                    "remove it deliberately if it was asserting the wrong thing."
+                )
+            else:
+                title = f"{TITLE_PREFIX} {_short_name(ds.urn)} is at-risk ({ds.score:.0f}/100)"
+                desc = (
+                    f"Trust Score {ds.score:.0f}/100, below the {threshold:.0f} threshold. "
+                    f"Weakest signal: **{weak}**. Improving {weak} will clear this incident."
+                )
             try:
                 execute_graphql_retry(graph, _RAISE, variables={"urn": ds.urn, "title": title, "desc": desc})
                 raised += 1

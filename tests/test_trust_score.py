@@ -18,9 +18,9 @@ def test_perfect_dataset_scores_100():
     # Arrange: every signal at its maximum.
     signals = DatasetSignals(
         urn="urn:li:dataset:test.perfect",
-        tests_passing=4,
-        tests_failing=0,
-        has_tests=True,
+        assertions_passing=4,
+        assertions_failing=0,
+        has_assertions=True,
         has_description=True,
         has_field_docs=True,
         has_glossary_terms=True,
@@ -71,7 +71,7 @@ def test_missing_signals_are_not_silent_zeros():
     assert result.coverage == 0.45
 
 
-def test_quality_is_pass_ratio():
+def test_quality_counts_passing_checks_against_the_breadth_target():
     # Arrange: 3 of 4 tests pass => quality 75.
     signals = DatasetSignals(
         urn="urn:li:dataset:test.quality",
@@ -84,7 +84,9 @@ def test_quality_is_pass_ratio():
     result = score_dataset(signals)
 
     # Assert
-    assert result.components.quality == 75.0
+    # 3 of the 4 checks a dataset needs, through the catalog-test fallback:
+    # 3/4 * 100 * TESTS_FALLBACK_CAP.
+    assert result.components.quality == 45.0
 
 
 def test_domain_score_ignores_datasets_it_cannot_judge():
@@ -94,9 +96,9 @@ def test_domain_score_ignores_datasets_it_cannot_judge():
     # gap is real and belongs in the report.
     perfect = DatasetSignals(
         urn="urn:li:dataset:d.1",
-        tests_passing=4,
-        tests_failing=0,
-        has_tests=True,
+        assertions_passing=4,
+        assertions_failing=0,
+        has_assertions=True,
         has_description=True,
         has_field_docs=True,
         has_glossary_terms=True,
@@ -137,9 +139,9 @@ def test_quality_weight_matches_the_documented_formula():
     # freshness_days beyond the window scores 0, so only quality contributes.
     signals = DatasetSignals(
         urn="urn:li:dataset:test.quality-only",
-        tests_passing=4,
-        tests_failing=0,
-        has_tests=True,
+        assertions_passing=4,
+        assertions_failing=0,
+        has_assertions=True,
         has_description=False,
         has_field_docs=False,
         has_glossary_terms=False,

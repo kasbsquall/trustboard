@@ -34,9 +34,9 @@ def _rich(urn: str, **over) -> DatasetSignals:
         has_owner=True,
         freshness_days=0.0,
         freshness_source=FreshnessSource.OPERATIONS,
-        tests_passing=4,
-        tests_failing=0,
-        has_tests=True,
+        assertions_passing=4,
+        assertions_failing=0,
+        has_assertions=True,
     )
     base.update(over)
     return DatasetSignals(urn=urn, **base)
@@ -68,19 +68,22 @@ def test_assertions_win_over_metadata_tests():
 
 def test_tests_are_used_when_there_are_no_assertions():
     # Arrange
-    signals = _rich("urn:li:dataset:t.tests", tests_passing=3, tests_failing=1)
+    signals = _rich("urn:li:dataset:t.tests", assertions_passing=0, assertions_failing=0,
+                   has_assertions=False, tests_passing=3, tests_failing=1, has_tests=True)
 
     # Act
     result = score_dataset(signals)
 
     # Assert
     assert result.quality_source is QualitySource.TESTS
-    assert result.components.quality == 75.0
+    # 3 passing of the 4 a dataset needs, discounted by TESTS_FALLBACK_CAP,
+    # because a catalog test is not a statement about the data.
+    assert result.components.quality == 45.0
 
 
 def test_no_quality_signal_is_absent_not_zero():
     # Arrange: neither source present.
-    signals = _rich("urn:li:dataset:t.none", tests_passing=0, tests_failing=0, has_tests=False)
+    signals = _rich("urn:li:dataset:t.none", assertions_passing=0, assertions_failing=0, has_assertions=False, tests_passing=0, tests_failing=0, has_tests=False)
 
     # Act
     result = score_dataset(signals)
@@ -213,8 +216,8 @@ def test_equal_blast_radius_reduces_to_a_flat_mean():
     good = _rich("urn:li:dataset:t.a")
     bad = _rich(
         "urn:li:dataset:t.b",
-        tests_passing=0,
-        tests_failing=4,
+        assertions_passing=0,
+        assertions_failing=4,
         has_description=False,
         has_field_docs=False,
         has_glossary_terms=False,
@@ -233,8 +236,8 @@ def test_equal_blast_radius_reduces_to_a_flat_mean():
 
 
 def test_advice_points_at_weight_times_headroom_not_the_lowest_value():
-    # Arrange: ownership at 0 carries 20% of the weight; quality at 40 carries
-    # 35%. Quality has 0.35*60 = 21 of leverage, ownership 0.20*100 = 20, so
+    # Arrange: ownership at 0 carries 20% of the weight; quality at 30 carries
+    # 35%. Quality has 0.35*70 = 24.5 of leverage, ownership 0.20*100 = 20, so
     # quality is the better thing to fix even though ownership looks worse.
     signals = DatasetSignals(
         urn="urn:li:dataset:t.leverage",
@@ -254,7 +257,7 @@ def test_advice_points_at_weight_times_headroom_not_the_lowest_value():
 
     # Assert
     assert result.component_averages["ownership"] == 0.0
-    assert result.component_averages["quality"] == 40.0
+    assert result.component_averages["quality"] == 30.0
     assert result.weakest_component == "quality"
 
 
@@ -273,8 +276,9 @@ def test_domain_reports_which_sources_backed_the_quality_signal():
     # Arrange: one dataset scored from assertions, one from tests, one unscored.
     signals = [
         _rich("urn:li:dataset:t.1", assertions_passing=2, assertions_failing=0, has_assertions=True),
-        _rich("urn:li:dataset:t.2"),
-        _rich("urn:li:dataset:t.3", tests_passing=0, tests_failing=0, has_tests=False),
+        _rich("urn:li:dataset:t.2", assertions_passing=0, assertions_failing=0, has_assertions=False,
+              tests_passing=4, tests_failing=0, has_tests=True),
+        _rich("urn:li:dataset:t.3", assertions_passing=0, assertions_failing=0, has_assertions=False),
     ]
 
     # Act
