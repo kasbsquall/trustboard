@@ -41,6 +41,36 @@ jobs:
           python -c "import agents.trust_lookup, agents.gatekeeper, agents.herald"
           python -c "import mcp_server.trustboard_mcp, backend.main, run_week"
 
+  # The deployed image is not the repo. The backend Dockerfile copies a subset of
+  # the tree, and it was missing `scoring/`, which /api/model imports lazily: the
+  # container started clean, every other route worked, and the one endpoint that
+  # publishes the scoring rules returned a 500 in production. Tests and a build
+  # both passed throughout, because neither runs the image. This does.
+  deploy-image:
+    name: Backend image serves the model
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the backend image
+        run: docker build -f backend/Dockerfile -t trustboard-backend .
+
+      - name: Start it
+        run: docker run -d --name tb -p 8000:8000 trustboard-backend
+
+      - name: Every route answers, including the ones with lazy imports
+        run: |
+          for _ in $(seq 1 30); do
+            curl -fsS http://localhost:8000/api/model >/dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -fsS http://localhost:8000/api/model | tee /dev/stderr | grep -q '"weights"'
+          curl -fsS http://localhost:8000/api/leaderboard >/dev/null
+
+      - name: Logs on failure
+        if: failure()
+        run: docker logs tb
+
   frontend:
     name: Frontend build
     runs-on: ubuntu-latest
