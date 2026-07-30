@@ -107,13 +107,13 @@ PROFILES = {
     "Data Platform Team": dict(doc=0.95, own=0.95, terms=0.60, checks=5, pass_ratio=0.92,
                                fresh=0.90, assertions=0.85, quality=1.00),
     # Tests thoroughly, but the pipelines lag.
-    "Ecommerce Operations": dict(doc=0.70, own=0.75, terms=0.65, checks=4, pass_ratio=0.85,
-                                 fresh=0.30, assertions=0.70, quality=0.92),
+    "Ecommerce Operations": dict(doc=0.70, own=0.75, terms=0.65, checks=5, pass_ratio=0.95,
+                                 fresh=0.15, assertions=0.70, quality=0.92),
     # Fresh data nobody has written a word about.
     "E-Commerce": dict(doc=0.20, own=0.60, terms=0.15, checks=3, pass_ratio=0.70,
                        fresh=0.95, assertions=0.55, quality=0.85),
     # Documented and current, but orphaned: no owner to ask.
-    "Engineering Division": dict(doc=0.75, own=0.10, terms=0.55, checks=2, pass_ratio=0.60,
+    "Engineering Division": dict(doc=0.75, own=0.05, terms=0.55, checks=5, pass_ratio=0.92,
                                  fresh=0.70, assertions=0.40, quality=0.75),
     # Behind on everything, which is what at-risk should actually look like.
     "Marketing": dict(doc=0.20, own=0.20, terms=0.10, checks=1, pass_ratio=0.35,
@@ -168,8 +168,24 @@ ASSERTION_CHECKS = [
 _PLATFORM_RE = re.compile(r"dataPlatform:([^,]+),")
 
 
+_MS_PER_DAY_CLOCK = 86_400_000
+
+
 def _now_ms() -> int:
-    return int(time.time() * 1000)
+    """The current time, floored to midnight UTC.
+
+    Floored because `Operation` is a timeseries aspect: a point is identified by
+    its timestamp, so a clock that moves between runs appends a new point instead
+    of replacing the old one. Nine had piled up on a single dataset while this
+    module's own docstring claimed re-running replaces them. Only the most recent
+    one is read, so the scores were never wrong, but the graph was filling with
+    duplicates and the claim was false.
+
+    Flooring to the day makes every run within the same day write the identical
+    point. A run tomorrow writes a new one, which is correct: a day has passed
+    and the demo's notion of "changed three days ago" has moved with it.
+    """
+    return int(time.time() * 1000) // _MS_PER_DAY_CLOCK * _MS_PER_DAY_CLOCK
 
 
 def _audit() -> AuditStampClass:
