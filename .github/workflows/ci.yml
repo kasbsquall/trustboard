@@ -89,3 +89,21 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm run build
+
+      # The image is not the build. A Dockerfile change took the deployed site
+      # down while `npm run build` stayed green, because the base is Alpine and
+      # the RUN line called a tool that only exists on Debian.
+      - name: The image builds too
+        working-directory: .
+        run: docker build -f frontend/Dockerfile --build-arg NEXT_PUBLIC_API_URL=http://localhost:8000 -t tb-frontend frontend
+
+      - name: And it serves the page as an unprivileged user
+        working-directory: .
+        run: |
+          docker run -d --name tbf -p 3000:3000 tb-frontend
+          for _ in $(seq 1 30); do
+            curl -fsS http://localhost:3000/ >/dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -fsS http://localhost:3000/ >/dev/null
+          test "$(docker exec tbf id -u)" != "0"

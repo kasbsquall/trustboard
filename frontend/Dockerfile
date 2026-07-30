@@ -25,8 +25,10 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.js ./next.config.js
 
 # Runs unprivileged: a container that does not need root should not have it.
-RUN useradd --create-home --uid 10001 app
-USER app
+# The node images already ship a `node` user, and this base is Alpine, where
+# useradd does not exist at all (busybox provides adduser). Reusing the user the
+# image already defines is both correct and one fewer layer.
+USER node
 
 EXPOSE 3000
 CMD ["npm", "run", "start"]
