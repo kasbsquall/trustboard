@@ -43,6 +43,26 @@ def cli(main: Callable[[], None]) -> None:
         raise SystemExit(str(err)) from None
 
 
+# Test seam. Set TRUSTBOARD_STUB_GRAPH to a module path and get_graph returns
+# that module's StubGraph instead of connecting. It exists so the MCP surface
+# tests can spawn the real server in CI, where there is no GMS, since the defects
+# those tests cover only appear when the server actually starts. Deliberately an
+# environment variable rather than a config setting: nothing in the product reads
+# it, and a stray value cannot silently redirect a real run to a fake graph
+# because get_graph would fail loudly on a module that does not exist.
+def _stub_graph():
+    import importlib.util
+    import os
+
+    path = os.environ.get("TRUSTBOARD_STUB_GRAPH")
+    if not path:
+        return None
+    spec = importlib.util.spec_from_file_location("_trustboard_stub_graph", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.StubGraph()
+
+
 @lru_cache
 def get_graph() -> DataHubGraph:
     """Returns a DataHubGraph authenticated against the GMS (cached).
@@ -50,6 +70,10 @@ def get_graph() -> DataHubGraph:
     Raises DataHubUnreachable if the GMS does not answer, so a caller can
     decide what to do: a script exits, the MCP server reports a tool error.
     """
+    stub = _stub_graph()
+    if stub is not None:
+        return stub
+
     settings = get_settings()
     graph = DataHubGraph(
         DatahubClientConfig(

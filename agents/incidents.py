@@ -161,18 +161,19 @@ def remediate(graph, dataset_scores: list[DatasetScore], threshold: float = AT_R
         # here instead, where the only way to clear it is to fix the check or
         # admit it was wrong and remove it deliberately, both of which a person
         # has to do and neither of which arithmetic can fake.
-        is_toxic = ds.score < threshold or ds.failing_checks > 0
+        is_toxic = ds.score < threshold or ds.mostly_failing
 
         if is_toxic and not active:
             weak = _weakest(ds)
-            if ds.failing_checks:
+            if ds.mostly_failing:
                 n = ds.failing_checks
                 title = (
                     f"{TITLE_PREFIX} {_short_name(ds.urn)} has "
                     f"{n} failing quality check{'s' if n > 1 else ''}"
                 )
                 desc = (
-                    f"{n} quality check{'s are' if n > 1 else ' is'} failing on this dataset. "
+                    f"{n} of {n + ds.passing_checks} quality checks are failing on this dataset, "
+                    "so most of what is asserted about it is currently false. "
                     f"Trust Score is {ds.score:.0f}/100. A failing check earns no trust and no "
                     "penalty, so the score cannot be recovered by deleting it: fix the check, or "
                     "remove it deliberately if it was asserting the wrong thing."

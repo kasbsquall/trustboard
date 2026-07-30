@@ -155,7 +155,20 @@ def read_dataset_trust(urn: str, graph=None) -> dict:
     # accepted only when TrustBoard's own write corroborates it, which is what
     # score_version proves. Anything else is unrated, the honest answer for an
     # asset nobody has measured.
-    tier = sp["trust_tier"] or (tag_tier if sp["score_version"] else None)
+    # Neither the property nor the tag is evidence on its own. Both are editable
+    # from the DataHub UI with ordinary catalog permissions, so a team that
+    # dislikes its rating can hand-set io.trustboard.trustTier to "gold" and, with
+    # the tier read at face value, the gate answered `status: "rated",
+    # trustworthy: true` with a null score and a null model version sitting right
+    # there in the response. The first version of this guard covered the tag and
+    # left the property, which takes precedence, wide open.
+    #
+    # score_version is the corroboration because only the Scribe writes it, and it
+    # writes it in the same mutation as the score. A tier without one is a claim
+    # nobody can back, and the honest answer for a claim nobody can back is that
+    # we have not measured this asset.
+    corroborated = bool(sp["score_version"])
+    tier = (sp["trust_tier"] or tag_tier) if corroborated else None
     return {
         "urn": urn,
         "kind": "dataset",

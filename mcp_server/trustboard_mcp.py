@@ -16,9 +16,17 @@ annotations`. FastMCP inspects the real annotation objects when it registers a
 tool, and postponed evaluation would hand it plain strings, which fails with
 "issubclass() arg 1 must be a class".
 """
-from typing import Literal, TypedDict
+from typing import Literal
 
 from mcp.server.fastmcp import FastMCP
+
+# typing_extensions, not typing. Pydantic refuses `typing.TypedDict` on Python
+# below 3.12, and FastMCP builds the tool schemas through pydantic, so on the
+# 3.11 this project advertises the import raised PydanticUserError and the whole
+# server died before it could serve anything. It worked locally on 3.12 and was
+# broken everywhere else, which is the definition of a bug you only find by
+# running what you ship.
+from typing_extensions import TypedDict
 
 from agents import trust_lookup
 
@@ -42,7 +50,7 @@ class TrustInfo(TypedDict, total=False):
 
     urn: str
     found: bool
-    kind: Literal["dataset", "domain"]
+    kind: Literal["dataset", "domain"] | None
     name: str | None
     trust_score: float | None   # null when the asset is unrated
     trust_tier: Literal["gold", "silver", "bronze", "at-risk", "unrated"] | None
@@ -50,7 +58,7 @@ class TrustInfo(TypedDict, total=False):
     score_version: str | None   # scores from different versions are not comparable
     owning_team: str | None     # datasets only
     team_trust_score: float | None
-    error: str                  # only when the URN is an entity type we do not score
+    error: str | None           # only when the URN is an entity type we do not score
 
 
 class Policy(TypedDict):

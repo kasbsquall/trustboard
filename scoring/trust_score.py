@@ -186,10 +186,24 @@ class DatasetScore:
     quality_source: QualitySource = QualitySource.NONE
     freshness_source: FreshnessSource = FreshnessSource.NONE
     impact_weight: float = 1.0  # blast radius, used when aggregating
-    # Checks that are failing right now. The score does not price these, because
-    # any formula that did would pay a team to delete them. They are surfaced as
-    # an incident instead, which is a thing a person has to close.
+    # Checks failing and passing right now. The score does not price failures,
+    # because any formula that did would pay a team to delete them, so they are
+    # surfaced through the incident path instead.
     failing_checks: int = 0
+    passing_checks: int = 0
+
+    @property
+    def mostly_failing(self) -> bool:
+        """More checks failing than passing.
+
+        The line for an incident, and it is drawn here rather than at "any
+        failure" because that version paged 30 of 67 datasets on the first run,
+        eight of them gold. DataHub already surfaces individual assertion
+        failures; a second system shouting about the same single failure is how
+        people learn to ignore both. A table where most of what is asserted is
+        false is a different claim, and it is one about trust.
+        """
+        return self.failing_checks > self.passing_checks
     # False when there is no quality signal at all, or coverage is below the
     # floor. An unrated dataset has a score of 0.0 that means nothing; read this
     # before the number.
@@ -299,9 +313,12 @@ def impact_weight(downstream_count: int) -> float:
 def score_dataset(s: DatasetSignals) -> DatasetScore:
     """Computes a dataset's Trust Score, renormalizing over what is available."""
     quality, quality_source = _quality(s)
-    failing = s.assertions_failing if quality_source is QualitySource.ASSERTIONS else (
-        s.tests_failing if quality_source is QualitySource.TESTS else 0
-    )
+    if quality_source is QualitySource.ASSERTIONS:
+        failing, passing = s.assertions_failing, s.assertions_passing
+    elif quality_source is QualitySource.TESTS:
+        failing, passing = s.tests_failing, s.tests_passing
+    else:
+        failing = passing = 0
     components = {
         "quality": quality,
         "documentation": _documentation(s),
@@ -337,6 +354,7 @@ def score_dataset(s: DatasetSignals) -> DatasetScore:
         impact_weight=round(impact_weight(s.downstream_count), 3),
         rated=rated,
         failing_checks=failing,
+        passing_checks=passing,
     )
 
 

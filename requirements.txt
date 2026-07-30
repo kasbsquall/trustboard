@@ -28,3 +28,6 @@ requests==2.32.3
 # --- Tests ---
 pytest==8.3.4
 pytest-cov==6.0.0
+
+# TypedDict for the MCP tool schemas: pydantic rejects typing.TypedDict below 3.12.
+typing_extensions>=4.9
