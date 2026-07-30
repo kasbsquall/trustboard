@@ -20,6 +20,7 @@ import requests
 
 from agents import trust_lookup
 from config import get_settings
+from scoring.trust_score import tier_scale_text, weights_text
 
 _MEDALS = {0: "1st", 1: "2nd", 2: "3rd"}
 
@@ -53,7 +54,10 @@ def build_message(teams: list[dict], previous: dict[str, float] | None = None) -
 
     blocks: list[dict] = [
         {"type": "header", "text": {"type": "plain_text", "text": "TrustBoard Weekly"}},
-        {"type": "context", "elements": [{"type": "mrkdwn", "text": "Trust Score = 35% quality + 25% documentation + 20% ownership + 20% freshness, read from DataHub and written back to the graph. Tiers: gold 80+, silver 60+, bronze 40+, at-risk below 40."}]},
+        {"type": "context", "elements": [{"type": "mrkdwn", "text": (
+            f"Trust Score = {weights_text()}, read from DataHub and written back "
+            f"to the graph. {tier_scale_text()}"
+        )}]},
         {"type": "divider"},
     ]
 
