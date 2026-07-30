@@ -59,6 +59,7 @@ def model() -> dict:
         MIN_COVERAGE,
         QUALITY_REQUIRED,
         SCORE_VERSION,
+        TESTS_FALLBACK_CAP,
         TIERS,
         WEIGHTS,
     )
@@ -71,6 +72,7 @@ def model() -> dict:
         "incident_threshold": AT_RISK_THRESHOLD,
         "quality_required": QUALITY_REQUIRED,
         "breadth_target": BREADTH_TARGET,
+        "tests_fallback_cap": TESTS_FALLBACK_CAP,
         "freshness_window_days": FRESHNESS_WINDOW_DAYS,
     }
 

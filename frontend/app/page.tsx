@@ -30,7 +30,7 @@ export const dynamic = "force-dynamic";
 // is not written here: it comes from the API with the scores, so the legend
 // cannot drift away from the model that produced the numbers above it.
 const SCORE_PARTS = [
-  { Icon: SealCheck, key: "quality", name: "Quality", label: "data assertions passing, else catalog tests" },
+  { Icon: SealCheck, key: "quality", name: "Quality", label: "checks that pass, counted not averaged" },
   { Icon: BookOpen, key: "documentation", name: "Documentation", label: "descriptions and glossary coverage" },
   { Icon: UserCircle, key: "ownership", name: "Ownership", label: "datasets with an assigned owner" },
   { Icon: ClockCounterClockwise, key: "freshness", name: "Freshness", label: "how recently the data itself changed" },
@@ -68,7 +68,7 @@ function subtitleOf(team: Team, model: ModelInfo) {
   const coverage =
     team.signal_coverage != null ? ` · ${Math.round(team.signal_coverage * 100)}% signal coverage` : "";
   if (!best) return `No signals yet${coverage}`;
-  return `Fix first: ${best.name[0].toUpperCase()}${best.name.slice(1)} ${Math.round(best.value)}%${coverage}`;
+  return `Fix first: ${best.name[0].toUpperCase()}${best.name.slice(1)} ${Math.round(best.value)}/100${coverage}`;
 }
 
 export default async function Home() {
@@ -118,7 +118,11 @@ export default async function Home() {
         <p className="masthead__meta">
           Week of <b>{leader.week_of}</b>
           <br />
-          Every score is read from DataHub and written back as metadata.
+          Every score here was read from DataHub and written back to it as metadata.
+          <br />
+          <span className="masthead__note">
+            This page serves a saved snapshot of that run. There is no DataHub instance behind it.
+          </span>
         </p>
       </header>
 
@@ -242,8 +246,13 @@ export default async function Home() {
               ? "A dataset with no quality signal at all is left unrated, whatever its coverage: there is no honest trust score for data nobody checks. "
               : ""}
             Below {Math.round(model.min_coverage * 100)}% coverage a team is left unrated rather
-            than scored, and an incident opens below {model.incident_threshold}. Model v
-            {model.version}.
+            than scored, and an incident opens below {model.incident_threshold} or when most of a
+            dataset&rsquo;s checks are failing. Quality counts the checks that pass rather than the
+            share of them that pass, because a pass rate pays a team to delete the ones that fail:{" "}
+            {model.breadth_target} passing checks earn full marks, and catalog tests are capped at{" "}
+            {Math.round((model.tests_fallback_cap ?? 0.6) * 100)}% because they check the catalog
+            entry rather than the data. An unrated dataset still counts toward its team&rsquo;s
+            denominator, so hiding a table costs the same as leaving it broken. Model v{model.version}.
           </p>
           {/* The earlier weeks of the trend were authored to give the demo a
               story. Saying so next to the chart costs a sentence and is the

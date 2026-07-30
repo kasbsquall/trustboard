@@ -186,6 +186,14 @@ a {
   text-wrap: balance;
 }
 
+/* The snapshot disclosure. Quieter than the claim above it, because it is a
+   caveat rather than a headline, but present: the README says three times that
+   this page is not live and the page itself said nothing. */
+.masthead__note {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
 .masthead__meta {
   text-align: right;
   font-size: var(--step--1);
@@ -667,7 +675,15 @@ a {
   .headline { margin-inline: calc(var(--ma-sm) * -1); padding-inline: var(--ma-sm); }
   .detail__head { grid-template-columns: 1fr; }
   .row__delta::before { content: "vs last week "; color: var(--text-faint); font-weight: 400; }
-  .masthead__meta { text-align: left; max-width: none; }
+  /* The snapshot disclosure. Quieter than the claim above it, because it is a
+   caveat rather than a headline, but present: the README says three times that
+   this page is not live and the page itself said nothing. */
+.masthead__note {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.masthead__meta { text-align: left; max-width: none; }
   .headline { grid-template-columns: 1fr; gap: var(--ma-md); }
   .headline__score { text-align: left; }
   /* Stacked layout: the trend follows the score on the same edge instead of

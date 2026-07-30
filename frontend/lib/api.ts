@@ -50,6 +50,10 @@ export interface ModelInfo {
   min_coverage: number;
   incident_threshold: number;
   quality_required: boolean;
+  /** Passing checks needed for full quality marks. */
+  breadth_target: number;
+  /** Ceiling on quality when the only evidence is catalog tests. */
+  tests_fallback_cap: number;
   freshness_window_days: number;
 }
 
