@@ -35,6 +35,17 @@ export function TrendChart({ points }: { points: HistoryPoint[] }) {
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(p.trust_score)}`).join(" ");
   const area = `${line} L ${x(points.length - 1)} ${PAD.top + innerH} L ${x(0)} ${PAD.top + innerH} Z`;
 
+  // Where the authored history stops and the measured week begins. Drawing all
+  // four points identically put invented numbers and a real audit in the same
+  // line with nothing to tell them apart, on the one page that has no room for
+  // the caveat the leaderboard carries.
+  const firstMeasured = points.findIndex((p) => !p.synthetic);
+  const seam = firstMeasured <= 0 ? 0 : firstMeasured;
+  const authored = seam > 0 ? points.slice(0, seam + 1) : [];
+  const measured = seam > 0 ? points.slice(seam) : points;
+  const pathOf = (pts: HistoryPoint[], offset: number) =>
+    pts.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i + offset)} ${y(p.trust_score)}`).join(" ");
+
   const last = points[points.length - 1];
   const first = points[0];
   const climbing = last.trust_score >= first.trust_score;
@@ -44,7 +55,12 @@ export function TrendChart({ points }: { points: HistoryPoint[] }) {
     <svg
       viewBox={`0 0 ${W} ${H}`}
       role="img"
-      aria-label={`Trust score trend from ${first.trust_score.toFixed(1)} to ${last.trust_score.toFixed(1)}`}
+      aria-label={
+        `Trust score trend from ${first.trust_score.toFixed(1)} to ${last.trust_score.toFixed(1)}` +
+        (authored.length > 1
+          ? `. The first ${seam} point${seam > 1 ? "s are" : " is"} demo history, drawn dashed, not measured`
+          : "")
+      }
       style={{ display: "block", width: "100%", height: "auto", overflow: "visible" }}
     >
       <defs>
@@ -78,9 +94,20 @@ export function TrendChart({ points }: { points: HistoryPoint[] }) {
       ))}
 
       <path d={area} fill="url(#trend-fill)" />
+      {authored.length > 1 && (
+        <path
+          d={pathOf(authored, 0)}
+          fill="none"
+          stroke={stroke}
+          strokeWidth="1.5"
+          strokeDasharray="3 3"
+          strokeOpacity="0.55"
+          strokeLinecap="round"
+        />
+      )}
       <path
         className="trend-line"
-        d={line}
+        d={pathOf(measured, seam)}
         fill="none"
         stroke={stroke}
         strokeWidth="2"

@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import date
 
 from agents import herald, scribe
-from agents.auditor import audit_all_domains
+from agents.auditor import audit_all_domains, print_quality_sources
 from backend.database.repository import (
     previous_week_scores,
     record_leaderboard_post,

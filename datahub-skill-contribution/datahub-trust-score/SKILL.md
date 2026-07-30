@@ -88,14 +88,29 @@ missing.
 Weighted average of the four components, each normalized to 0-100. Default weights:
 quality 35, documentation 25, ownership 20, freshness 20.
 
-**Renormalize on missing signals.** If a dataset has no assertions and no `testResults`,
-drop that component and rescale the remaining weights instead of scoring it as zero. A
-missing signal is unknown, not bad. Report coverage alongside the score so the gap stays
-visible.
+**Count passing checks; never use a pass rate.** `passing / (passing + failing)` pays a team
+to delete the checks that fail: ten checks with one passing scores 10, and deleting the nine
+failures scores 100. Count what passes against a target of about four instead, so a failing
+check is worth what a missing one is worth and deleting it moves nothing. Raise an incident
+on any failing check regardless of score, which is where the failure gets priced. Cap the
+catalog-test fallback below full marks, because a Test is a claim about the catalog entry and
+an assertion is a claim about the data.
 
-The domain score is the mean of its dataset scores. Tiers: gold at 80 and above, silver
-at 60, bronze at 40, at-risk below 40. Surface these thresholds wherever the tier is
-shown, otherwise the label is meaningless to the reader.
+**Renormalize on missing signals.** Drop an absent component and rescale the remaining
+weights instead of scoring it as zero. A missing signal is unknown, not bad. Report coverage
+alongside the score so the gap stays visible.
+
+**Below the floor, and with no quality signal at all, return `unrated` rather than a number.**
+Give unrated its own tier and tag, raise no incident on it, and leave the numeric property
+absent rather than writing zero, since a filterable 0.0 meaning "could not measure" reads as
+worst in the company in every facet. A coverage floor alone does not protect you: without
+requiring quality outright, a team that never wrote a check outranks one that runs assertions
+and fails half of them.
+
+The domain score weights each dataset by downstream blast radius, `1 + ln(1 + consumers)`,
+and aggregates only over the datasets it could judge. Tiers: gold at 80 and above, silver at
+60, bronze at 40, at-risk below 40, plus unrated. Surface these thresholds wherever the tier
+is shown, otherwise the label is meaningless to the reader.
 
 ### 4. Write the score back to the graph
 

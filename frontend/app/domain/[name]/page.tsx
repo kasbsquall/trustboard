@@ -240,7 +240,20 @@ export default function DomainDetail({ params }: { params: { name: string } }) {
             {" "}
             Signal coverage this week was{" "}
             <b>{Math.round(team.signal_coverage * 100)}%</b>
-            {team.dataset_count != null && <> across {team.dataset_count} datasets</>}
+            {/* Across how many datasets could actually be judged, not how many
+                the team owns. Quoting only the total overstated the measured
+                base: a team with 8 datasets and 6 judgeable was described as
+                "91% across 8 datasets", which reads as though all eight were
+                behind the number. */}
+            {team.rated_dataset_count != null && team.dataset_count != null ? (
+              <>
+                {" "}
+                across the <b>{team.rated_dataset_count}</b> of {team.dataset_count} datasets
+                TrustBoard could judge
+              </>
+            ) : (
+              team.dataset_count != null && <> across {team.dataset_count} datasets</>
+            )}
             {team.score_version && <>, scored by model v{team.score_version}</>}.
           </>
         )}

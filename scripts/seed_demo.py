@@ -104,7 +104,7 @@ PLATFORM_TO_TEAM = {
 # behind everywhere, which is what "at risk" should look like.
 PROFILES = {
     # Strong engineering discipline, weak on business vocabulary.
-    "Data Platform Team": dict(doc=0.92, own=0.95, terms=0.35, checks=5, pass_ratio=0.90,
+    "Data Platform Team": dict(doc=0.95, own=0.95, terms=0.60, checks=5, pass_ratio=0.92,
                                fresh=0.90, assertions=0.85, quality=1.00),
     # Tests thoroughly, but the pipelines lag.
     "Ecommerce Operations": dict(doc=0.70, own=0.75, terms=0.65, checks=4, pass_ratio=0.85,
