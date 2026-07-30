@@ -32,10 +32,28 @@ SERVER = StdioServerParameters(
 
 @asynccontextmanager
 async def _session():
-    async with stdio_client(SERVER) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            yield session
+    async with stdio_client(SERVER) as (read, write), ClientSession(read, write) as session:
+        await session.initialize()
+        yield session
+
+
+class ToolError(Exception):
+    """The MCP server reported the tool call as failed.
+
+    Raised rather than returned. MCP signals failure through `isError` on the
+    result, with the message in the content blocks, and the previous version of
+    this module never looked at that flag: an unreachable DataHub or a rejected
+    argument arrived as `{"raw": "Error executing tool ..."}`, and the first
+    caller to index a field it expected got a bare KeyError from inside its own
+    decision logic. The server was carefully built to hand an agent something
+    actionable, and the client threw it away.
+    """
+
+
+def _text_of(result) -> str:
+    return " ".join(
+        t for t in (getattr(b, "text", None) for b in result.content) if t
+    ).strip()
 
 
 def _payload(result):
@@ -44,6 +62,9 @@ def _payload(result):
     A tool returning a list arrives as one block per item, so reading only the
     first block would silently truncate a leaderboard to its winner.
     """
+    if getattr(result, "isError", False):
+        raise ToolError(_text_of(result) or "the tool reported an error with no message")
+
     items = []
     for block in result.content:
         text = getattr(block, "text", None)
@@ -58,9 +79,16 @@ def _payload(result):
     return items[0] if len(items) == 1 else items
 
 
-async def _call(tool: str, args: dict) -> dict:
+async def _call(tool: str, args: dict):
+    """Returns the raw tool result. Parsing happens in the sync caller.
+
+    Deliberately not parsed here. Raising inside the session's task group gets
+    the exception wrapped in an anyio ExceptionGroup on the way out, so a caller
+    writing `except ToolError` catches nothing and sees a BaseExceptionGroup
+    instead. The error has to leave the async machinery before it is raised.
+    """
     async with _session() as session:
-        return _payload(await session.call_tool(tool, args))
+        return await session.call_tool(tool, args)
 
 
 async def _tool_names() -> list[str]:
@@ -69,8 +97,11 @@ async def _tool_names() -> list[str]:
 
 
 def call_tool(tool: str, **args) -> dict:
-    """Calls one TrustBoard MCP tool and returns its parsed result."""
-    return asyncio.run(_call(tool, args))
+    """Calls one TrustBoard MCP tool and returns its parsed result.
+
+    Raises ToolError if the server reported the call as failed.
+    """
+    return _payload(asyncio.run(_call(tool, args)))
 
 
 def list_tools() -> list[str]:

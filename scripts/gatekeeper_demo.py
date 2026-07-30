@@ -14,8 +14,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from agents.gatekeeper import Decision, evaluate  # noqa: E402
-from mcp_client.datahub_connection import execute_graphql_retry, get_graph  # noqa: E402
+from agents.gatekeeper import Decision, evaluate
+from mcp_client.datahub_connection import cli, execute_graphql_retry, get_graph
 
 _BY_TAG = (
     'query s($tag: String!) { search(input: {type: DATASET, query: "*", '
@@ -41,6 +41,17 @@ def print_decision(d: Decision) -> None:
     print(f"        reason: {d.reason}")
     if d.alternative:
         print(f"        suggestion: {d.alternative}")
+    # What a calling system would write to its own log. A bare boolean is not
+    # auditable six months later; this line names the tier, the score, the
+    # coverage behind it, the model version and the policy that was applied.
+    print(f"        audit: {d.audit_line()}")
+
+
+# A dataset nobody has ingested. Included so the third outcome is visible: the
+# gate does not answer an unknown asset the same way it answers a bad one,
+# because "we have no record of this" is a problem with the request rather than
+# with somebody's data.
+_UNKNOWN = "urn:li:dataset:(urn:li:dataPlatform:snowflake,does.not.exist,PROD)"
 
 
 def main() -> None:
@@ -54,7 +65,8 @@ def main() -> None:
         print_decision(evaluate(gold, "Build the executive revenue dashboard"))
     if risky:
         print_decision(evaluate(risky, "Train the churn prediction model"))
+    print_decision(evaluate(_UNKNOWN, "Join against a table someone mentioned in a ticket"))
 
 
 if __name__ == "__main__":
-    main()
+    cli(main)
