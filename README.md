@@ -142,23 +142,33 @@ component at 40 carrying 20% of the weight has less leverage than one at 55 carr
 a team after the former costs them effort that barely moves their rank.
 
 The scoring logic is pure and unit-tested, which is why it can be packaged as a reusable DataHub
-Skill. 40 of the 63 tests cover `scoring/trust_score.py` directly; the rest cover the policy gate,
+Skill. Most of the suite covers `scoring/trust_score.py` directly; the rest cover the policy gate,
 the MCP boundary and the aspect-reading rules.
 
 ## Architecture
 
 ```
-DataHub (GMS :8080)
-     | reads tests, docs, ownership, recency             writes property, tags, incident
-     v                                                          ^
-  Auditor  --scores-->  local history (SQLite)  ------------>  Scribe  -->  DataHub
-                              |                                               |
-                              v                                              exposes
-                          Herald  -->  Slack (weekly leaderboard)         MCP tools
-                              |                                               |
-                              v                                               v
-                     FastAPI backend  -->  Next.js dashboard          Gatekeeper agent
-                                                                   (GO / NO-GO on datasets)
+                        DataHub (GMS :8080)
+                    reads  |                  ^  writes properties, tags, incidents
+    assertions, tests,     |                  |
+    docs, owners, lineage, v                  |
+    Operation           Auditor ---scores---> Scribe
+                           |                     |
+                           |                     | publishes
+                           v                     v
+                    local history          MCP tools: get_trust_score,
+                      (SQLite)             is_trustworthy, get_team_leaderboard
+                           |                     |
+                  +--------+--------+            | separate process, stdio
+                  v                 v            v
+            FastAPI backend      Herald      Gatekeeper agent
+                  |                 |        reads the score back OUT of
+                  v                 v        DataHub before deciding
+           Next.js dashboard     Slack       (GO / NO-GO on a dataset)
+
+The Scribe receives the Auditor's results in memory; the SQLite snapshot is
+written afterwards and only feeds the dashboard's trend. The Gatekeeper shares
+neither: what it knows, it reads from the graph.
 ```
 
 ## Quickstart
@@ -205,9 +215,11 @@ More precisely, the seeder writes both of the sources the Auditor knows about fo
 signals, so neither code path is decoration:
 
 - **Quality:** real `Assertion` entities with recorded `AssertionRunEvent` results on a fraction of
-  each team's datasets, plus `testResults` on all of them. On the run in `examples/`, 41 of 67
-  datasets are scored from assertions and 26 fall back to catalog tests. The Auditor prints that
-  split at the end of every run.
+  each team's datasets, plus `testResults` on most of them. Running the Auditor prints the split
+  it actually read, in three groups rather than two: scored from assertions, fallen back to catalog
+  tests, and no quality signal at all. That last group is not a weaker measurement, it is the
+  absence of one, and folding it into the fallback would commit in prose the exact conflation the
+  code spends two hundred lines refusing to make.
 - **Freshness:** the `Operation` aspect, which is when the data changed, alongside
   `datasetProperties.lastModified`, which is the metadata's own audit stamp. The Auditor prefers the
   first and labels the score with whichever it used.

@@ -115,14 +115,27 @@ def _latest_timeseries(graph, urn: str, aspect_type):
     Timeseries aspects go through a different endpoint that answers with an
     empty list rather than a 404, and the SDK refuses them through get_aspect
     outright.
+
+    Retried like any other read, and a failure that survives the retries is
+    raised rather than swallowed. Returning None on an error looked harmless and
+    was not: `Operation` is where freshness learns when the DATA changed, so one
+    transient 500 silently demoted a dataset to the crawler's own audit stamp,
+    the source this module calls misleading, at 20% of the score weight, with
+    nothing in the coverage figure or the run summary to show it happened.
     """
-    try:
-        values = graph.get_timeseries_values(
-            entity_urn=urn, aspect_type=aspect_type, filter={}, limit=1
-        )
-    except Exception:  # noqa: BLE001 - absent timeseries index is not a failure
-        return None
-    return values[0] if values else None
+    for attempt in range(3):
+        try:
+            values = graph.get_timeseries_values(
+                entity_urn=urn, aspect_type=aspect_type, filter={}, limit=1
+            )
+            return values[0] if values else None
+        except Exception as err:
+            if attempt == 2:
+                raise SignalReadError(
+                    f"could not read {aspect_type.__name__} for {urn}: {err}"
+                ) from err
+            time.sleep(2 ** attempt)
+    return None
 
 
 def _paged_search(graph, entity_type: str, extra_fields: str = "") -> list[dict]:
@@ -348,7 +361,18 @@ def audit_all_domains(graph=None) -> list[AuditedDomain]:
 
     urns = list_dataset_urns(graph)
     assertions = fetch_assertion_results(graph, urns)
-    downstream = build_downstream_counts(graph, urns)
+    # Guarded, because build_downstream_counts calls _aspect and therefore
+    # raises SignalReadError. Unprotected, a single transient 500 on one lineage
+    # read among hundreds aborted the whole weekly run three lines before
+    # MAX_UNREADABLE_RATIO, the mechanism that exists to decide whether a partial
+    # read is publishable, got a chance to look at it. Blast radius is a
+    # refinement of the aggregate, so losing it costs precision, not correctness:
+    # every dataset falls back to weight 1.0, which is the flat mean.
+    try:
+        downstream = build_downstream_counts(graph, urns)
+    except SignalReadError as err:
+        print(f"  lineage unavailable, weighting every dataset equally ({err})")
+        downstream = {}
 
     grouped: dict[str, list[DatasetSignals]] = {}
     unreadable: list[str] = []
@@ -401,6 +425,25 @@ def audit_all_domains(graph=None) -> list[AuditedDomain]:
 
     results.sort(key=lambda a: a.score.score, reverse=True)
     return results
+
+
+def print_quality_sources(results: list[AuditedDomain]) -> None:
+    """Prints which source backed the quality signal, in three groups.
+
+    Three and not two, because "no signal at all" is not a weaker measurement,
+    it is the absence of one, and this is the distinction the whole scoring model
+    is built on. Printed from here rather than under __main__ so the command the
+    Quickstart actually gives you shows it.
+    """
+    counts: dict[str, int] = {}
+    for a in results:
+        for source, n in a.score.quality_sources.items():
+            counts[source] = counts.get(source, 0) + n
+    print(
+        f"      quality read from: assertions={counts.get('assertions', 0)}, "
+        f"catalog tests={counts.get('metadata-tests', 0)}, "
+        f"no quality signal={counts.get('none', 0)}"
+    )
 
 
 def _print_leaderboard(results: list[AuditedDomain]) -> None:

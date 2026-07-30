@@ -85,24 +85,39 @@ PLATFORM_TO_TEAM = {
     "looker": "Marketing",
 }
 
-# Health profile per team: target fraction for each signal. This creates the
-# contrast that makes the leaderboard interesting.
-# `assertions` is the fraction of a team's datasets that get real data
-# assertions with recorded runs. It is deliberately below 1.0 for every team, so
-# the audit ends up reading its preferred source on some datasets and falling
-# back to metadata tests on others, which is the mix a real catalog has.
-# `quality` is the fraction that gets ANY quality signal. Below 1.0 on purpose:
-# the rest are uninstrumented tables, which is the ordinary state of a real
-# catalog and the only way the unrated path exists in the demo at all. Before
-# this, every dataset had all four signals, so the coverage floor, the quality
-# requirement and the whole unrated tier were dead code in every artifact a
-# reader could see.
+# Health profile per team. Every fraction is the share of that team's datasets
+# receiving the signal, and `checks` is how many data assertions a documented
+# dataset carries.
+#
+# These used to be one dial per team, every fraction sliding together, and it
+# made the demo argue against the product. When documentation, ownership,
+# freshness and quality all correlate perfectly, the leaderboard collapses to a
+# single axis of team virtue, "fix this first" says quality for everyone because
+# quality carries the top weight, and the assertions-versus-catalog-tests
+# distinction can never diverge because one number drives both. A real catalog
+# does not look like that: teams are uneven, and which signal a team is worst at
+# is the interesting part of the number.
+#
+# So each team now has a shape rather than a level. The strongest team is thin on
+# glossary terms; the second tests well but ships stale; the third documents
+# nothing and runs fresh; the fourth has nobody's name on anything; the last is
+# behind everywhere, which is what "at risk" should look like.
 PROFILES = {
-    "Data Platform Team": dict(doc=0.90, own=0.90, terms=0.80, pass_ratio=0.90, fresh=0.85, assertions=0.85, quality=1.00),
-    "Ecommerce Operations": dict(doc=0.75, own=0.70, terms=0.60, pass_ratio=0.78, fresh=0.70, assertions=0.65, quality=0.92),
-    "E-Commerce": dict(doc=0.55, own=0.50, terms=0.40, pass_ratio=0.55, fresh=0.50, assertions=0.45, quality=0.85),
-    "Engineering Division": dict(doc=0.35, own=0.30, terms=0.25, pass_ratio=0.38, fresh=0.30, assertions=0.30, quality=0.75),
-    "Marketing": dict(doc=0.15, own=0.15, terms=0.10, pass_ratio=0.22, fresh=0.15, assertions=0.10, quality=0.60),
+    # Strong engineering discipline, weak on business vocabulary.
+    "Data Platform Team": dict(doc=0.92, own=0.95, terms=0.35, checks=5, pass_ratio=0.90,
+                               fresh=0.90, assertions=0.85, quality=1.00),
+    # Tests thoroughly, but the pipelines lag.
+    "Ecommerce Operations": dict(doc=0.70, own=0.75, terms=0.65, checks=4, pass_ratio=0.85,
+                                 fresh=0.30, assertions=0.70, quality=0.92),
+    # Fresh data nobody has written a word about.
+    "E-Commerce": dict(doc=0.20, own=0.60, terms=0.15, checks=3, pass_ratio=0.70,
+                       fresh=0.95, assertions=0.55, quality=0.85),
+    # Documented and current, but orphaned: no owner to ask.
+    "Engineering Division": dict(doc=0.75, own=0.10, terms=0.55, checks=2, pass_ratio=0.60,
+                                 fresh=0.70, assertions=0.40, quality=0.75),
+    # Behind on everything, which is what at-risk should actually look like.
+    "Marketing": dict(doc=0.20, own=0.20, terms=0.10, checks=1, pass_ratio=0.35,
+                      fresh=0.20, assertions=0.15, quality=0.60),
 }
 
 # Freshness prefers the Operation aspect, which records when the DATA changed.
@@ -136,10 +151,18 @@ TEST_CHECKS = [
 
 # Data assertions, the quality source the Auditor prefers. Each one is a claim
 # about the data rather than about the catalog entry.
+# There are six because the score rewards breadth: a team that asserts one thing
+# about a table has not established much, and with only three defined here no
+# dataset could ever reach BREADTH_TARGET, which would have quietly capped every
+# team in the demo below full quality marks. How many of these a given team
+# actually uses comes from its profile.
 ASSERTION_CHECKS = [
     ("row-count-not-zero", DatasetAssertionScopeClass.DATASET_ROWS, AssertionStdOperatorClass.GREATER_THAN),
     ("no-null-primary-key", DatasetAssertionScopeClass.DATASET_COLUMN, AssertionStdOperatorClass.NOT_NULL),
     ("schema-unchanged", DatasetAssertionScopeClass.DATASET_SCHEMA, AssertionStdOperatorClass.EQUAL_TO),
+    ("primary-key-unique", DatasetAssertionScopeClass.DATASET_COLUMN, AssertionStdOperatorClass.EQUAL_TO),
+    ("row-count-within-range", DatasetAssertionScopeClass.DATASET_ROWS, AssertionStdOperatorClass.BETWEEN),
+    ("no-future-timestamps", DatasetAssertionScopeClass.DATASET_COLUMN, AssertionStdOperatorClass.LESS_THAN),
 ]
 
 _PLATFORM_RE = re.compile(r"dataPlatform:([^,]+),")
@@ -308,11 +331,11 @@ def seed_dataset(graph, domains: dict[str, str], dataset_urn: str, team: str, id
     # prefers over metadata tests. Only the team's `assertions` fraction gets
     # them, so both code paths run against this graph.
     if within(profile["assertions"]):
-        _seed_assertions(graph, dataset_urn, profile["pass_ratio"], idx, changed_at)
+        _seed_assertions(graph, dataset_urn, profile["pass_ratio"], idx, changed_at, profile["checks"])
 
 
 def _seed_assertions(
-    graph, dataset_urn: str, pass_ratio: float, idx: int, run_at: int
+    graph, dataset_urn: str, pass_ratio: float, idx: int, run_at: int, checks: int
 ) -> None:
     """Emits three data assertions on a dataset, each with one recorded run.
 
@@ -322,16 +345,17 @@ def _seed_assertions(
     rather than stacking new ones, which is what keeps the score stable across
     runs.
     """
-    n_pass = round(pass_ratio * len(ASSERTION_CHECKS))
+    used = ASSERTION_CHECKS[: max(1, min(checks, len(ASSERTION_CHECKS)))]
+    n_pass = round(pass_ratio * len(used))
     # Same deterministic jitter as the metadata tests, so a team's assertion
     # results and test results move together instead of contradicting.
-    if idx % 3 == 0 and n_pass < len(ASSERTION_CHECKS):
+    if idx % 3 == 0 and n_pass < len(used):
         n_pass += 1
     elif idx % 3 == 1 and n_pass > 0:
         n_pass -= 1
-    n_pass = max(0, min(len(ASSERTION_CHECKS), n_pass))
+    n_pass = max(0, min(len(used), n_pass))
 
-    for i, (check, scope, operator) in enumerate(ASSERTION_CHECKS):
+    for i, (check, scope, operator) in enumerate(used):
         urn = _assertion_urn(dataset_urn, check)
         graph.emit_mcp(
             MetadataChangeProposalWrapper(

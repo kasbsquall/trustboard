@@ -18,13 +18,22 @@ from scoring.trust_score import AT_RISK_THRESHOLD, WEIGHTS, DatasetScore
 
 TITLE_PREFIX = "TrustBoard:"
 
+# Paged, and `total` is selected so the walk knows when to stop. A fixed
+# `count: 50` was the same first-page-is-everything assumption the search code
+# was fixed for: on a dataset with a long incident history the open TrustBoard
+# ticket could sit past the cut-off, so the dedup guard would not see it and the
+# next run would raise a second incident for the same problem, every week.
 _QUERY_INCIDENTS = """
-query i($urn: String!) {
+query i($urn: String!, $start: Int!, $count: Int!) {
   entity(urn: $urn) { ... on Dataset {
-    incidents(start: 0, count: 50) { incidents { urn title status { state } } }
+    incidents(start: $start, count: $count) {
+      total
+      incidents { urn title status { state } }
+    }
   } }
 }
 """
+_INCIDENT_PAGE = 50
 _RAISE = """
 mutation r($urn: String!, $title: String!, $desc: String!) {
   raiseIncident(input: {resourceUrn: $urn, type: OPERATIONAL, title: $title, description: $desc})
@@ -77,9 +86,20 @@ def _active_incidents(graph, dataset_urn: str) -> list[str]:
     duplicate incident on a dataset that already has one, and it does that
     again every week. Idempotency here depends on knowing what is open.
     """
-    res = execute_graphql_retry(graph, _QUERY_INCIDENTS, variables={"urn": dataset_urn})
-    entity = res.get("entity") or {}
-    incidents = ((entity.get("incidents") or {}).get("incidents")) or []
+    incidents: list[dict] = []
+    start = 0
+    while True:
+        res = execute_graphql_retry(
+            graph, _QUERY_INCIDENTS,
+            variables={"urn": dataset_urn, "start": start, "count": _INCIDENT_PAGE},
+        )
+        block = ((res.get("entity") or {}).get("incidents")) or {}
+        page = block.get("incidents") or []
+        incidents.extend(page)
+        start += len(page)
+        if not page or start >= (block.get("total") or 0):
+            break
+
     return [
         inc["urn"]
         for inc in incidents

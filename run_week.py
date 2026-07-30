@@ -67,6 +67,7 @@ def main() -> None:
             f"{trust_tier(a.score.score, a.score.rated):<8} "
             f"coverage {a.score.coverage:.0%}"
         )
+    print_quality_sources(results)
 
     print("\n[2/4] Scribe: writing back to the DataHub graph...")
     write_report = scribe.write_all(graph, results=results)

@@ -54,8 +54,10 @@ def model() -> dict:
     """
     from scoring.trust_score import (
         AT_RISK_THRESHOLD,
+        BREADTH_TARGET,
         FRESHNESS_WINDOW_DAYS,
         MIN_COVERAGE,
+        QUALITY_REQUIRED,
         SCORE_VERSION,
         TIERS,
         WEIGHTS,
@@ -67,7 +69,8 @@ def model() -> dict:
         "tiers": [{"name": name, "min_score": floor} for name, floor in TIERS],
         "min_coverage": MIN_COVERAGE,
         "incident_threshold": AT_RISK_THRESHOLD,
-        "quality_required": True,
+        "quality_required": QUALITY_REQUIRED,
+        "breadth_target": BREADTH_TARGET,
         "freshness_window_days": FRESHNESS_WINDOW_DAYS,
     }
 

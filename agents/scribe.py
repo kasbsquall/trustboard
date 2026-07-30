@@ -39,6 +39,7 @@ from agents.auditor import AuditedDomain, audit_all_domains
 from agents.incidents import IncidentReport, remediate
 from mcp_client.datahub_connection import execute_graphql_retry, get_graph
 from scoring.trust_score import (
+    MIN_COVERAGE,
     SCORE_VERSION,
     DatasetScore,
     DomainScore,
@@ -237,9 +238,10 @@ def _render_scorecard(score: DomainScore, tier: str) -> str:
                 "**TrustBoard: UNRATED**",
                 "",
                 f"Signal coverage was {score.coverage:.0%} across "
-                f"{score.dataset_count} datasets, below the 50% this model needs "
-                "to publish a score. Add quality checks or freshness signals and "
-                "the team becomes scoreable.",
+                f"{score.dataset_count} datasets, below the {MIN_COVERAGE:.0%} this "
+                "model needs to publish a score, or too few of them carried a "
+                "quality check. Add quality checks or freshness signals and the "
+                "team becomes scoreable.",
                 _DESC_END,
             ]
         )
