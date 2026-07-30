@@ -60,11 +60,18 @@ def main() -> None:
 
     gold = find_dataset_by_tier(graph, "gold")
     risky = find_dataset_by_tier(graph, "at-risk") or find_dataset_by_tier(graph, "bronze")
+    unrated = find_dataset_by_tier(graph, "unrated")
 
     if gold:
         print_decision(evaluate(gold, "Build the executive revenue dashboard"))
     if risky:
         print_decision(evaluate(risky, "Train the churn prediction model"))
+    # The case the whole three-outcome verdict exists for. A refusal here is not
+    # an accusation: nobody has checked this table, so the honest answer is that
+    # TrustBoard cannot vouch for it, and the suggestion says how to fix that
+    # rather than telling a team its data is bad.
+    if unrated:
+        print_decision(evaluate(unrated, "Backfill the customer 360 table"))
     print_decision(evaluate(_UNKNOWN, "Join against a table someone mentioned in a ticket"))
 
 

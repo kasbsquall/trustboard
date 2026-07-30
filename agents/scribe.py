@@ -170,6 +170,19 @@ mutation up($urn: String!, $tier: String!, $coverage: Float!, $version: String!)
 }
 """ % (PROP_TIER, PROP_COVERAGE, PROP_VERSION)
 
+# Omitting trustScore is not the same as removing it. upsert leaves properties it
+# was not asked about exactly as they were, so an asset that scored last week and
+# is unrated this week kept its old number sitting under an "unrated" tier: the
+# two disagreed, and the stale figure was the one a numeric filter would find.
+# The tag write already learned this lesson; the properties had not.
+_REMOVE_SCORE = """
+mutation rm($urn: String!) {
+  removeStructuredProperties(input: {
+    assetUrn: $urn, structuredPropertyUrns: ["%s"]
+  }) { properties { structuredProperty { urn } } }
+}
+""" % PROP_SCORE
+
 _ADD_TAG = "mutation a($tag:String!,$urn:String!){ addTag(input:{tagUrn:$tag,resourceUrn:$urn}) }"
 _REMOVE_TAG = "mutation r($tag:String!,$urn:String!){ removeTag(input:{tagUrn:$tag,resourceUrn:$urn}) }"
 
@@ -187,6 +200,13 @@ def _write_structured_properties(
     }
     if not rated:
         execute_graphql_retry(graph, _UPSERT_PROPS_UNRATED, variables=common)
+        # Remove-then-leave, the same shape the tier tag uses. Without this an
+        # asset that was scored before and is unrated now keeps the old number.
+        try:
+            execute_graphql_retry(graph, _REMOVE_SCORE, variables={"urn": asset_urn})
+        except Exception as err:
+            if "not found" not in str(err).lower():
+                raise
         return
     execute_graphql_retry(graph, _UPSERT_PROPS, variables={**common, "score": score})
 
