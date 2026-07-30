@@ -52,6 +52,9 @@ def _week_rows(scores: dict[str, float], version: str) -> list[dict]:
             "rank_this_week": i,
             "score_version": version,
             "synthetic": True,
+            # These weeks were authored, so nothing was written to DataHub for
+            # them and the row says so.
+            "written_to_datahub": False,
         }
         for i, (name, score) in enumerate(ranked, 1)
     ]
@@ -97,6 +100,14 @@ def main() -> None:
                 "rated": a.score.rated,
                 "rank_this_week": rank,
                 "synthetic": False,
+                # This week's row came from a real audit that also wrote to the
+                # graph. Omitting the key let repository.save_weekly_snapshot
+                # default it to False and clobber what run_week.py had recorded,
+                # so the shipped snapshot said nothing was ever written while the
+                # graph plainly held the writes. The one field built to record
+                # whether the project did what it claims was recording the
+                # opposite.
+                "written_to_datahub": True,
             }
         )
     save_weekly_snapshot(current_rows, week_of=this_monday)
