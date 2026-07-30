@@ -25,6 +25,8 @@ export interface Team {
   rated_dataset_count: number | null;
   /** False when TrustBoard could not judge the team; the score then means nothing. */
   rated: boolean | null;
+  /** True when the row was authored to give the demo a trend, not measured. */
+  synthetic: boolean;
   spark: number[];
 }
 
@@ -37,6 +39,8 @@ export interface LeaderboardResponse {
 export interface HistoryPoint {
   week_of: string;
   trust_score: number;
+  /** True when the point was authored to give the demo a trend, not measured. */
+  synthetic: boolean;
 }
 
 export interface ModelInfo {

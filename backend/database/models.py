@@ -46,6 +46,11 @@ class DomainScore(Base):
     # team's score means anything at all.
     rated_dataset_count: Mapped[int | None] = mapped_column(Integer)
     rated: Mapped[bool | None] = mapped_column(Boolean)
+    # True when the row was authored by scripts/seed_history.py to give the demo
+    # a trend, rather than measured by an audit. The dashboard says so on screen:
+    # presenting invented history next to a real score, in the same chart, with no
+    # mark, is the one thing that would make every honest claim here look staged.
+    synthetic: Mapped[bool | None] = mapped_column(Boolean)
     rank_this_week: Mapped[int | None] = mapped_column(Integer)
     rank_last_week: Mapped[int | None] = mapped_column(Integer)
     written_to_datahub: Mapped[bool] = mapped_column(Boolean, default=False)

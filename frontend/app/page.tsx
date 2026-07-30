@@ -236,10 +236,23 @@ export default async function Home() {
               )
               .join(", ")}
             . Missing signals are removed and the rest renormalized, so a gap shows as reduced
-            coverage instead of a hidden zero. Below{" "}
-            {Math.round(model.min_coverage * 100)}% coverage a team is left unrated rather than
-            scored. Model v{model.version}.
+            coverage instead of a hidden zero.{" "}
+            {model.quality_required
+              ? "A dataset with no quality signal at all is left unrated, whatever its coverage: there is no honest trust score for data nobody checks. "
+              : ""}
+            Below {Math.round(model.min_coverage * 100)}% coverage a team is left unrated rather
+            than scored, and an incident opens below {model.incident_threshold}. Model v
+            {model.version}.
           </p>
+          {/* The earlier weeks of the trend were authored to give the demo a
+              story. Saying so next to the chart costs a sentence and is the
+              difference between a demo and a claim. */}
+          {teams.some((t) => t.synthetic) ? null : (
+            <p className="legend__note">
+              This week is a real audit. The three earlier weeks in each trend were authored for
+              the demo, not measured.
+            </p>
+          )}
         </div>
         <div>
           <h2>The agents behind it</h2>

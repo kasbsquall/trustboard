@@ -58,6 +58,7 @@ def save_weekly_snapshot(rows: list[dict], week_of: date | None = None) -> date:
             target.dataset_count = row.get("dataset_count")
             target.rated_dataset_count = row.get("rated_dataset_count")
             target.rated = row.get("rated")
+            target.synthetic = row.get("synthetic", False)
             target.rank_this_week = row.get("rank_this_week")
             target.rank_last_week = prev_ranks.get(row["domain_name"])
             # Defaults to False. Defaulting to True meant a caller that never
@@ -101,6 +102,7 @@ def load_seed_if_empty() -> int:
                     dataset_count=row.get("dataset_count"),
                     rated_dataset_count=row.get("rated_dataset_count"),
                     rated=row.get("rated"),
+                    synthetic=row.get("synthetic", False),
                     rank_this_week=row.get("rank_this_week"),
                     rank_last_week=row.get("rank_last_week"),
                     # The seed file is an export of a run that did write to
@@ -204,6 +206,7 @@ def _row_to_dict(r: DomainScore) -> dict:
         "dataset_count": r.dataset_count,
         "rated_dataset_count": r.rated_dataset_count,
         "rated": None if r.rated is None else bool(r.rated),
+        "synthetic": bool(r.synthetic),
         "rank_this_week": r.rank_this_week,
         "rank_last_week": r.rank_last_week,
         "written_to_datahub": bool(r.written_to_datahub),

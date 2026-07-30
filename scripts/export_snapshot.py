@@ -82,6 +82,7 @@ def main() -> None:
                     "dataset_count": r.dataset_count,
                     "rated_dataset_count": r.rated_dataset_count,
                     "rated": None if r.rated is None else bool(r.rated),
+                    "synthetic": bool(r.synthetic),
                     "rank_this_week": r.rank_this_week,
                     "rank_last_week": r.rank_last_week,
                     "written_to_datahub": bool(r.written_to_datahub),

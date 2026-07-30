@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS domain_scores (
     -- team's score means anything at all.
     rated_dataset_count INT,
     rated BOOLEAN,
+    -- True when the row was authored to give the demo a trend, not measured.
+    synthetic BOOLEAN,
     rank_this_week INT,
     rank_last_week INT,
     written_to_datahub BOOLEAN DEFAULT false,

@@ -24,7 +24,7 @@
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text": "`1st`  *Data Platform Team*  84.0  (GOLD)  _up 1.5 pts_\n`2nd`  *Ecommerce Operations*  67.9  (SILVER)  _up 6.0 pts_\n`3rd`  *E-Commerce*  61.0  (SILVER)  _up 8.8 pts_\n`4th`  *Engineering Division*  39.4  (AT-RISK)  _up 0.4 pts_\n`5th`  *Marketing*  36.8  (AT-RISK)  _up 11.7 pts_"
+        "text": "`1st`  *Data Platform Team*  84.0  (GOLD)  _up 1.5 pts_\n`2nd`  *Ecommerce Operations*  67.9  (SILVER)  _up 2.5 pts_\n`3rd`  *E-Commerce*  61.0  (SILVER)  _up 1.5 pts_\n`4th`  *Engineering Division*  39.4  (AT-RISK)  _down 3.0 pts_\n`5th`  *Marketing*  36.8  (AT-RISK)  _up 6.0 pts_"
       }
     },
     {
@@ -34,7 +34,7 @@
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text": "*Team of the week:* Data Platform Team (84.0, GOLD)\n*Most improved:* Marketing (up 11.7 points this week)"
+        "text": "*Team of the week:* Data Platform Team (84.0, GOLD)\n*Most improved:* Marketing (up 6.0 points this week)"
       }
     }
   ]

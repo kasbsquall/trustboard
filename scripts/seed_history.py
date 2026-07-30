@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from agents.auditor import audit_all_domains
 from backend.database.repository import _monday_of, save_weekly_snapshot
 from mcp_client.datahub_connection import cli, get_graph
+from scoring.trust_score import SCORE_VERSION
 
 # How much to SUBTRACT from the current score on weeks -3, -2, -1
 # (score = current - offset). A positive offset means it came from lower (it
@@ -33,10 +34,25 @@ TRAJECTORIES = {
 _DEFAULT = [8.0, 5.0, 2.0]
 
 
-def _week_rows(scores: dict[str, float]) -> list[dict]:
+def _week_rows(scores: dict[str, float], version: str) -> list[dict]:
+    """Rows for one authored week.
+
+    They carry the model version they were derived from, and a synthetic flag.
+    Without the version, the dashboard compared a real v2.1 score against a row
+    with no version at all and printed the difference as if it meant something,
+    which is exactly the cross-version comparison the README warns about. Without
+    the flag, invented history sat in the same chart as a measured score with
+    nothing to tell them apart.
+    """
     ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
     return [
-        {"domain_name": name, "trust_score": round(max(0.0, min(100.0, score)), 2), "rank_this_week": i}
+        {
+            "domain_name": name,
+            "trust_score": round(max(0.0, min(100.0, score)), 2),
+            "rank_this_week": i,
+            "score_version": version,
+            "synthetic": True,
+        }
         for i, (name, score) in enumerate(ranked, 1)
     ]
 
@@ -57,7 +73,7 @@ def main() -> None:
             for name in current
         }
         week_of = this_monday - timedelta(days=7 * weeks_ago)
-        rows = _week_rows(scores)
+        rows = _week_rows(scores, SCORE_VERSION)
         save_weekly_snapshot(rows, week_of=week_of)
         print(f"  week {week_of.isoformat()}: {[(r['domain_name'], r['trust_score']) for r in rows]}")
 
@@ -80,6 +96,7 @@ def main() -> None:
                 "rated_dataset_count": a.score.rated_dataset_count,
                 "rated": a.score.rated,
                 "rank_this_week": rank,
+                "synthetic": False,
             }
         )
     save_weekly_snapshot(current_rows, week_of=this_monday)
