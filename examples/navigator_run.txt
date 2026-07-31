@@ -1,34 +1,91 @@
+Two real runs of the Navigator, recorded verbatim on 2026-07-30 against a local
+DataHub. Nothing in scripts/navigator_demo.py names a dataset. The searches, the
+trust checks, the substitution and the refusal are the agent's, not the author's.
+
+
+=== RUN 1: the agent has to find the right words ===
+
 Task: Build the executive revenue dashboard for the quarterly board pack
 
-The Navigator has no URN and no shortlist. It searches, checks trust
-over MCP, and decides.
+  find_datasets 'revenue'                          -> 8 matches
+  find_datasets 'quarterly board revenue summary'  -> 0
+  find_datasets 'finance revenue summary'          -> 0
+  find_datasets 'sales revenue fact table'         -> 0
+  find_datasets 'executive KPI dashboard'          -> 0
+  find_datasets 'orders'                           -> 8 matches
+  find_datasets 'essential KPI measures'           -> 1 match
+  check_trust   Essential_KPI_Measures             -> rated, silver, trustworthy
+  check_trust   analytics.order_history            -> rated, gold, trustworthy
+  submit_plan
 
-What it did:
-  find_datasets: {'query': 'revenue'} -> 8 match(es) for 'revenue'
-  find_datasets: {'query': 'quarterly board revenue summary'} -> 0 match(es)
-  find_datasets: {'query': 'finance revenue summary'} -> 0 match(es)
-  find_datasets: {'query': 'sales revenue fact table'} -> 0 match(es)
-  find_datasets: {'query': 'executive KPI dashboard'} -> 0 match(es)
-  find_datasets: {'query': 'orders'} -> 8 match(es) for 'orders'
-  find_datasets: {'query': 'essential KPI measures'} -> 1 match(es)
-  check_trust: Essential_KPI_Measures -> rated, trustworthy=True, tier=silver
-  check_trust: ORDER_ENTRY_DB.analytics.order_history -> rated, trustworthy=True, tier=gold
-  submit_plan: final answer
+Chose: dbt ORDER_ENTRY_DB.analytics.order_history
 
-Chose: urn:li:dataset:(urn:li:dataPlatform:dbt,b2fd91.ORDER_ENTRY_DB.analytics.order_history,PROD)
-Why:   Selected order_history (dbt, Data Platform Team) as the base for the executive
-       revenue dashboard: it is gold-tier, trust score 92.21, and provides the
-       incremental historical order data needed to compute revenue for the board pack.
-       Considered the Marketing-owned Essential KPI Measures PowerBI dataset as an
-       alternative; it passed the silver trust bar but had a much lower owning-team
-       trust score and less direct revenue lineage, so order_history was preferred.
+  "Selected order_history (dbt, Data Platform Team): gold-tier, trust score 92.21,
+   and provides the incremental historical order data needed to compute revenue for
+   the board pack. Considered the Marketing-owned Essential KPI Measures PowerBI
+   dataset as an alternative; it passed the silver trust bar but had a much lower
+   owning-team trust score and less direct revenue lineage."
 
-Turned down:
-  Essential_KPI_Measures: Passed trust check (silver, trustworthy) but is Marketing-owned
-  KPI layer with a low owning-team trust score (25.5) and less clearly revenue-specific;
-  order_history is a stronger, gold-tier source for the board-level revenue numbers.
+Five of the seven searches returned nothing. The catalog does not use the words
+the task used, so the agent kept rephrasing until it did. It then declined an
+asset it was ALLOWED to take, on the strength of the owning team's score.
 
----
-Recorded verbatim from a real run on 2026-07-30 against the local DataHub. Nothing in
-scripts/navigator_demo.py names a dataset: the seven searches, the two trust checks and
-the choice between them are the agent's, not the author's.
+
+=== RUN 2: the best candidate is at-risk, so it finds another one ===
+
+Task: Build a regional sales breakdown by product category for the sales team,
+      using the regions and product category reference tables
+
+  find_datasets 'regions reference table'          -> 3 matches
+  find_datasets 'product category reference table' -> 0
+  find_datasets 'sales by region'                  -> 1 match
+  find_datasets 'product category'                 -> 8 matches
+  find_datasets 'products'                         -> 8 matches
+  check_trust   dbt regions                        -> rated, gold
+  check_trust   dbt product_categories             -> rated, AT-RISK, NOT trustworthy
+  check_trust   dbt analytics.order_details        -> rated, gold
+  check_trust   snowflake product_categories       -> rated, gold
+  check_trust   postgres product_categories        -> rated, gold
+  check_trust   s3 product_categories              -> rated, silver
+  record_refusal dbt product_categories            -> written to the graph
+  submit_plan
+
+Chose: snowflake order_entry_db.order_entry.product_categories
+
+  "Use dbt `regions` (gold, 98.46) as the region reference table, Snowflake
+   `PRODUCT_CATEGORIES` (gold, 92.21) as the product category reference table, and
+   dbt `order_details` (gold, 98.46) as the sales fact table joining them. The
+   dbt-modeled `product_categories` table was rejected because it rated at-risk
+   (39.75, below the silver bar); the equivalent Snowflake source table for the
+   same entity is gold-rated and serves the task instead."
+
+This is the whole argument in one run. The obvious candidate failed the trust
+check, so the agent went looking for the same entity on other platforms, found
+four of them, compared their scores, and substituted. Then it wrote the refusal
+back onto the rejected dataset.
+
+
+=== What landed in DataHub ===
+
+  urn:li:dataset:(urn:li:dataPlatform:dbt,...order_entry.product_categories,PROD)
+
+  ACTIVE incident
+  "TrustBoard: an agent declined to use b2fd91.order_entry_db.order_entry.product_categories"
+
+  An automated agent was asked to: Build a regional sales breakdown by product
+  category for the sales team, using the regions and product category reference
+  tables
+
+  It consulted the TrustBoard score for this dataset over MCP and declined to use
+  it. Reason given:
+
+  Trust score 39.75 (at-risk tier), below the silver minimum required for building
+  a sales reporting pipeline.
+
+  This is real work that did not happen because of the state of this data.
+  Raising the dataset's trust score clears it.
+
+The team that owns that table opens it tomorrow and finds out that a piece of work
+did not get built on their data, and why. TrustBoard wrote a score; a separate
+process read it over MCP and made a decision; the decision went back into the
+graph. Graph to agent to graph.
