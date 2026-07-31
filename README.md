@@ -92,7 +92,7 @@ run you can open DataHub and see, on each domain and dataset:
 | Scorecard with weights, coverage and cut-offs | Domain description (idempotent block) | Any human opening the asset |
 | `Trust: Gold/Silver/Bronze/At-Risk/Unrated` tag | Global tag on each dataset | "Show me every at-risk dataset" in search |
 | Operational incident | Incident on low-trust datasets | On-call, data owners, the DataHub UI |
-| `get_trust_score`, `is_trustworthy`, `get_team_leaderboard` | Custom MCP tools | Any other AI agent in the ecosystem |
+| `get_trust_score`, `is_trustworthy`, `get_team_leaderboard`, `find_datasets`, `record_refusal` | Custom MCP tools | Any other AI agent in the ecosystem |
 
 The score is written per dataset and not only per domain because that is the grain other agents ask
 at. An agent deciding whether to build on `orders_raw` cannot act on a number that describes the team

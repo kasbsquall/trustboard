@@ -71,8 +71,8 @@ def test_no_key_degrades_instead_of_dying(monkeypatch):
 
 def test_a_search_reaches_the_catalog_and_the_result_goes_back_to_the_model(with_key, monkeypatch):
     calls = []
-    monkeypatch.setattr(navigator.asset_search, "find_datasets",
-                        lambda q, limit=8, graph=None: calls.append(q) or [{"urn": _URN, "name": "orders"}])
+    monkeypatch.setattr(navigator.trustboard_client, "call_tool",
+                        lambda tool, **kw: calls.append(kw.get("query")) or [{"urn": _URN, "name": "orders"}])
     model = FakeModel([
         [_use("find_datasets", {"query": "orders"})],
         [_use("submit_plan", {"chosen_urn": _URN, "summary": "picked orders"}, "c2")],
@@ -89,8 +89,10 @@ def test_a_search_reaches_the_catalog_and_the_result_goes_back_to_the_model(with
     assert "orders" in str(last["content"])
 
 
-def test_the_trust_check_goes_over_mcp_not_through_an_import(with_key, monkeypatch):
-    """The Navigator must learn trust from the graph, like any foreign agent."""
+def test_every_call_goes_over_mcp_not_through_an_import(with_key, monkeypatch):
+    """The Navigator does nothing a foreign agent could not do after one
+    `claude mcp add`. Searching and writing used to go through a Python import,
+    which meant the loop closed inside this repo rather than at the protocol."""
     seen = {}
     monkeypatch.setattr(navigator.trustboard_client, "call_tool",
                         lambda tool, **kw: seen.update({"tool": tool, **kw}) or
@@ -116,11 +118,12 @@ def test_a_refusal_is_filed_under_the_task_the_caller_asked_for(with_key, monkey
     """
     recorded = {}
 
-    def fake_record(urn, task, reason, graph=None):
-        recorded.update(urn=urn, task=task, reason=reason)
+    def fake_call(tool, **kw):
+        assert tool == "record_refusal", f"unexpected tool {tool}"
+        recorded.update(urn=kw["urn"], task=kw["task"], reason=kw["reason"])
         return {"recorded": True, "asset": "orders"}
 
-    monkeypatch.setattr(navigator.asset_search, "record_refusal", fake_record)
+    monkeypatch.setattr(navigator.trustboard_client, "call_tool", fake_call)
     model = FakeModel([
         [_use("record_refusal", {"urn": _URN, "reason": "at-risk"})],
         [_use("submit_plan", {"chosen_urn": None, "summary": "nothing usable"}, "c2")],
@@ -136,8 +139,8 @@ def test_a_refusal_is_filed_under_the_task_the_caller_asked_for(with_key, monkey
 
 
 def test_a_duplicate_refusal_is_not_counted_as_written(with_key, monkeypatch):
-    monkeypatch.setattr(navigator.asset_search, "record_refusal",
-                        lambda *a, **k: {"recorded": False, "reason": "already open"})
+    monkeypatch.setattr(navigator.trustboard_client, "call_tool",
+                        lambda tool, **kw: {"recorded": False, "reason": "already open"})
     model = FakeModel([
         [_use("record_refusal", {"urn": _URN, "reason": "at-risk"})],
         [_use("submit_plan", {"summary": "done"}, "c2")],
@@ -152,7 +155,7 @@ def test_a_failing_tool_is_reported_to_the_model_rather_than_crashing(with_key, 
     def boom(*a, **k):
         raise RuntimeError("GMS is down")
 
-    monkeypatch.setattr(navigator.asset_search, "find_datasets", boom)
+    monkeypatch.setattr(navigator.trustboard_client, "call_tool", boom)
     model = FakeModel([
         [_use("find_datasets", {"query": "orders"})],
         [_use("submit_plan", {"summary": "could not search"}, "c2")],
@@ -167,7 +170,7 @@ def test_a_failing_tool_is_reported_to_the_model_rather_than_crashing(with_key, 
 
 def test_the_run_is_bounded(with_key, monkeypatch):
     # A model that never submits must not loop forever against a paid API.
-    monkeypatch.setattr(navigator.asset_search, "find_datasets", lambda *a, **k: [])
+    monkeypatch.setattr(navigator.trustboard_client, "call_tool", lambda tool, **kw: [])
     model = FakeModel([[_use("find_datasets", {"query": "x"}, f"c{i}")]
                        for i in range(navigator.MAX_TURNS + 5)])
     monkeypatch.setattr(navigator, "Anthropic", lambda api_key: model)
@@ -179,9 +182,11 @@ def test_the_run_is_bounded(with_key, monkeypatch):
 
 
 def test_every_step_is_recorded_for_the_audit_trail(with_key, monkeypatch):
-    monkeypatch.setattr(navigator.asset_search, "find_datasets", lambda *a, **k: [{"urn": _URN}])
-    monkeypatch.setattr(navigator.trustboard_client, "call_tool",
-                        lambda tool, **kw: {"status": "rated", "trustworthy": True, "trust_tier": "gold"})
+    monkeypatch.setattr(
+        navigator.trustboard_client, "call_tool",
+        lambda tool, **kw: [{"urn": _URN}] if tool == "find_datasets"
+        else {"status": "rated", "trustworthy": True, "trust_tier": "gold"},
+    )
     model = FakeModel([
         [_text("looking"), _use("find_datasets", {"query": "orders"})],
         [_use("check_trust", {"urn": _URN}, "c2")],

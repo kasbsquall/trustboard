@@ -307,13 +307,21 @@ def leaderboard(graph=None) -> list[dict]:
             if sp["trust_score"] is not None and sp["trust_tier"] != "unrated":
                 teams.append(
                     {
+                        # The urn is what makes a row actionable. Without it a
+                        # foreign agent could read the league and then had no
+                        # identifier to pass to get_trust_score, so the one
+                        # multi-tool chain the MCP surface offered did not
+                        # connect. The output schema advertised it either way.
+                        "urn": e["urn"],
+                        "domain": (e.get("properties") or {}).get("name"),
                         "name": (e.get("properties") or {}).get("name"),
                         "trust_score": sp["trust_score"],
                         "trust_tier": sp["trust_tier"],
                         "coverage": sp["coverage"],
+                        "score_version": sp["score_version"],
                     }
                 )
-        start += _PAGE
+        start += len(results)
         if not results or start >= (page.get("total") or 0):
             break
     teams.sort(key=lambda t: t["trust_score"], reverse=True)

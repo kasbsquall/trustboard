@@ -59,10 +59,20 @@ def _run(coro):
     return asyncio.run(coro)
 
 
-def test_the_server_starts_and_publishes_all_three_tools():
+def test_the_server_publishes_everything_an_agent_needs_to_close_the_loop():
+    """Discover, check, and write the refusal back, all over the protocol.
+
+    The first three shipped alone, so a foreign agent could ask whether an asset
+    was trustworthy and nothing else: it could not find candidates and could not
+    record that it had declined one. The loop closed inside this repo rather than
+    at the protocol boundary, which is the opposite of the point.
+    """
     names = {t.name for t in _run(_tools())}
 
-    assert names == {"get_trust_score", "is_trustworthy", "get_team_leaderboard"}
+    assert names == {
+        "get_trust_score", "is_trustworthy", "get_team_leaderboard",
+        "find_datasets", "record_refusal",
+    }
 
 
 def test_every_tool_declares_an_output_schema():
@@ -72,10 +82,21 @@ def test_every_tool_declares_an_output_schema():
         assert tool.outputSchema is not None, f"{tool.name} publishes no output schema"
 
 
-def test_every_tool_is_annotated_read_only():
-    for tool in _run(_tools()):
-        assert tool.annotations is not None, f"{tool.name} has no annotations"
-        assert tool.annotations.readOnlyHint is True, f"{tool.name} is not marked read-only"
+def test_the_tool_that_writes_says_so_and_the_rest_say_they_do_not():
+    """A client that gates side effects behind human approval reads this flag.
+
+    Marking the write read-only would have it slip through unprompted; marking
+    the reads as writes would put a confirmation in front of every lookup and
+    train the user to click through them.
+    """
+    by_name = {t.name: t for t in _run(_tools())}
+
+    for name, tool in by_name.items():
+        assert tool.annotations is not None, f"{name} has no annotations"
+
+    assert by_name["record_refusal"].annotations.readOnlyHint is False
+    for name in ("get_trust_score", "is_trustworthy", "get_team_leaderboard", "find_datasets"):
+        assert by_name[name].annotations.readOnlyHint is True, f"{name} is not read-only"
 
 
 def test_the_policy_arguments_declare_their_legal_values():

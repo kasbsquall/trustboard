@@ -90,6 +90,26 @@ class Verdict(TypedDict, total=False):
     policy: Policy
 
 
+class DatasetMatch(TypedDict, total=False):
+    """One search hit. `urn` is what every other tool here takes."""
+
+    urn: str
+    name: str | None
+    description: str | None
+    owning_team: str | None
+
+
+class RefusalReceipt(TypedDict, total=False):
+    """What happened when an agent asked to record a refusal."""
+
+    recorded: bool
+    asset: str
+    # Present when nothing was written, saying why. An open refusal already on
+    # the asset is the ordinary case, not a failure.
+    reason: str
+    incident_urn: str
+
+
 class TeamScore(TypedDict, total=False):
     """One row of the weekly league, best first."""
 
@@ -146,6 +166,47 @@ def is_trustworthy(
 def get_team_leaderboard() -> list[TeamScore]:
     """Get the current TrustBoard leaderboard: teams ranked by trust score."""
     return trust_lookup.leaderboard()
+
+
+@mcp.tool(annotations={"readOnlyHint": True, "idempotentHint": True, "openWorldHint": True})
+def find_datasets(query: str, limit: int = 8) -> list[DatasetMatch]:
+    """Search the DataHub catalog for datasets by free text.
+
+    Matches names, descriptions and column names, and returns each hit's URN,
+    name, description and owning team. The URN is what `get_trust_score` and
+    `is_trustworthy` take, so this is where an agent starts when it has a task
+    rather than an asset.
+
+    Expect to search more than once. A catalog names things the way its owners
+    named them, not the way a task describes them, so a query built from the
+    wording of the request often returns nothing. Rephrase toward the vocabulary
+    the domain would use and try again.
+    """
+    from agents import asset_search
+
+    return asset_search.find_datasets(query, limit=limit)
+
+
+@mcp.tool(annotations={"readOnlyHint": False, "idempotentHint": True, "openWorldHint": True})
+def record_refusal(urn: str, task: str, reason: str) -> RefusalReceipt:
+    """Record that you declined to use a dataset, onto the dataset itself.
+
+    Writes an operational incident in DataHub naming the task you were asked to
+    do and why you turned this asset down, so the team that owns it learns that
+    real work did not get built on their data. A refusal that only reaches your
+    own logs teaches nobody anything.
+
+    Use this when you rejected an asset that was a genuine candidate for the
+    work. Do not use it for assets you merely browsed past, or the signal stops
+    meaning anything.
+
+    Idempotent per asset: if an open refusal is already there it is left alone
+    and `recorded` comes back false, so consulting the gate on a schedule does
+    not file the same complaint every run.
+    """
+    from agents import asset_search
+
+    return asset_search.record_refusal(urn, task, reason)
 
 
 if __name__ == "__main__":

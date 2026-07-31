@@ -21,10 +21,13 @@ build on it and why. TrustBoard's score becomes context a second agent consumes,
 and that agent's conclusion becomes context for whoever comes next:
 graph to agent to graph.
 
-Every fact it uses comes through the MCP transport. It imports no scoring code,
-no lookup module and no database, exactly like the Gatekeeper, so what it knows
-about trust it learned from the graph rather than from being in the same process
-as the thing that computed it.
+Every call it makes goes over the MCP transport, including the searches and the
+write-back. It imports no scoring code, no lookup module and no database, exactly
+like the Gatekeeper, so what it knows about trust it learned from the graph rather
+than from being in the same process as the thing that computed it. That matters
+beyond tidiness: it means this agent is doing nothing another team's agent could
+not do after one `claude mcp add`, which is the difference between a loop this
+project closes for itself and one the ecosystem can close.
 
     python -m scripts.navigator_demo "Build the executive revenue dashboard"
 """
@@ -35,7 +38,6 @@ from dataclasses import dataclass, field
 
 from anthropic import Anthropic, APIStatusError
 
-from agents import asset_search
 from config import get_settings
 from mcp_client import trustboard_client
 
@@ -190,7 +192,10 @@ class ModelUnavailable(Exception):
 def _run_tool(name: str, args: dict, graph, min_tier: str) -> tuple[object, str]:
     """Executes one tool call and returns (payload, one-line summary)."""
     if name == "find_datasets":
-        found = asset_search.find_datasets(args["query"], limit=args.get("limit", 8), graph=graph)
+        found = trustboard_client.call_tool(
+            "find_datasets", query=args["query"], limit=args.get("limit", 8)
+        )
+        found = found if isinstance(found, list) else [found] if found else []
         return found, f"{len(found)} match(es) for {args['query']!r}"
 
     if name == "check_trust":
@@ -267,8 +272,12 @@ def navigate(task: str, min_tier: str = "silver", model: str | None = None, grap
                 return plan
 
             if call.name == "record_refusal":
-                outcome = asset_search.record_refusal(
-                    call.input["urn"], task, call.input["reason"], graph=graph
+                # The task comes from the caller, not from the model. A model that
+                # hallucinated a different task would otherwise write that
+                # hallucination onto somebody's dataset.
+                outcome = trustboard_client.call_tool(
+                    "record_refusal", urn=call.input["urn"], task=task,
+                    reason=call.input["reason"],
                 )
                 plan.refusals_recorded += int(bool(outcome.get("recorded")))
                 summary = (
