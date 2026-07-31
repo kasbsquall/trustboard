@@ -138,3 +138,35 @@ export function highestLeverage(
   );
   return { name, value };
 }
+
+export interface NavigatorStep {
+  tool: string;
+  arg: string;
+  result: string;
+  /** search | pass | fail | write | done — drives the icon and the row tint. */
+  kind: string;
+}
+
+export interface NavigatorRun {
+  task: string;
+  recorded_at: string;
+  model: string;
+  steps: NavigatorStep[];
+  chosen: string;
+  summary: string;
+  rejected: { asset: string; why: string };
+  incident: { title: string; state: string; body: string };
+}
+
+/**
+ * A recorded run of the Navigator.
+ *
+ * Served as data rather than described in prose because the agent is the part of
+ * this project a reader is most entitled to be sceptical about, and the list of
+ * calls it actually made is the only answer to that.
+ */
+export async function getNavigatorRun(): Promise<NavigatorRun> {
+  const res = await fetch(`${API}/api/navigator-run`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to load the Navigator run");
+  return res.json();
+}

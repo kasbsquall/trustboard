@@ -7,6 +7,7 @@ import {
   MagnifyingGlass,
   PencilSimpleLine,
   SealCheck,
+  Compass,
   ShieldCheck,
   TrendDown,
   TrendUp,
@@ -40,7 +41,8 @@ const AGENTS = [
   { Icon: MagnifyingGlass, name: "Auditor", text: "Reads quality, docs, ownership and update recency from DataHub." },
   { Icon: PencilSimpleLine, name: "Scribe", text: "Writes the score back as a structured property, tags every dataset, and opens incidents on the ones dragging the team down." },
   { Icon: Megaphone, name: "Herald", text: "Posts these standings to Slack every week." },
-  { Icon: ShieldCheck, name: "Gatekeeper", text: "A separate agent that asks DataHub whether a dataset is trustworthy before building on it." },
+  { Icon: ShieldCheck, name: "Gatekeeper", text: "A separate process that asks DataHub whether a dataset is trustworthy before building on it." },
+  { Icon: Compass, name: "Navigator", text: "The one that reasons. Given a task in plain English it searches the catalog, checks candidates over MCP, and decides which data to build on.", href: "/navigator" },
 ];
 
 function deltaOf(team: Team) {
@@ -271,11 +273,19 @@ export default async function Home() {
         <div>
           <h2>The agents behind it</h2>
           <ul className="legend legend--cycle">
-            {AGENTS.map(({ Icon, name, text }) => (
+            {AGENTS.map(({ Icon, name, text, href }) => (
               <li key={name}>
                 <Icon size={15} weight="light" aria-hidden="true" />
                 <span>
                   <b>{name}</b> {text}
+                  {href ? (
+                    <>
+                      {" "}
+                      <Link href={href} className="inline-link">
+                        See a real run
+                      </Link>
+                    </>
+                  ) : null}
                 </span>
               </li>
             ))}

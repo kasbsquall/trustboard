@@ -1,0 +1,96 @@
+{
+  "task": "Build a regional sales breakdown by product category for the sales team, using the regions and product category reference tables",
+  "recorded_at": "2026-07-30",
+  "model": "claude-sonnet-5",
+  "steps": [
+    {
+      "tool": "find_datasets",
+      "arg": "regions reference table",
+      "result": "3 matches",
+      "kind": "search"
+    },
+    {
+      "tool": "find_datasets",
+      "arg": "product category reference table",
+      "result": "no matches",
+      "kind": "search"
+    },
+    {
+      "tool": "find_datasets",
+      "arg": "sales by region",
+      "result": "1 match",
+      "kind": "search"
+    },
+    {
+      "tool": "find_datasets",
+      "arg": "product category",
+      "result": "8 matches",
+      "kind": "search"
+    },
+    {
+      "tool": "find_datasets",
+      "arg": "products",
+      "result": "8 matches",
+      "kind": "search"
+    },
+    {
+      "tool": "check_trust",
+      "arg": "dbt regions",
+      "result": "gold, trustworthy",
+      "kind": "pass"
+    },
+    {
+      "tool": "check_trust",
+      "arg": "dbt product_categories",
+      "result": "at-risk 39.75, NOT trustworthy",
+      "kind": "fail"
+    },
+    {
+      "tool": "check_trust",
+      "arg": "dbt analytics.order_details",
+      "result": "gold, trustworthy",
+      "kind": "pass"
+    },
+    {
+      "tool": "check_trust",
+      "arg": "snowflake product_categories",
+      "result": "gold 92.21, trustworthy",
+      "kind": "pass"
+    },
+    {
+      "tool": "check_trust",
+      "arg": "postgres product_categories",
+      "result": "gold, trustworthy",
+      "kind": "pass"
+    },
+    {
+      "tool": "check_trust",
+      "arg": "s3 product_categories",
+      "result": "silver, trustworthy",
+      "kind": "pass"
+    },
+    {
+      "tool": "record_refusal",
+      "arg": "dbt product_categories",
+      "result": "written to DataHub as an incident",
+      "kind": "write"
+    },
+    {
+      "tool": "submit_plan",
+      "arg": "final answer",
+      "result": "substituted the Snowflake source",
+      "kind": "done"
+    }
+  ],
+  "chosen": "snowflake order_entry_db.order_entry.product_categories",
+  "summary": "Use dbt regions (gold, 98.46) as the region reference table, Snowflake PRODUCT_CATEGORIES (gold, 92.21) as the product category reference table, and dbt order_details (gold, 98.46) as the sales fact joining them. The dbt-modeled product_categories table was rejected because it rated at-risk (39.75, below the silver bar); the equivalent Snowflake source table for the same entity is gold-rated and serves the task instead.",
+  "rejected": {
+    "asset": "dbt order_entry_db.order_entry.product_categories",
+    "why": "Rated at-risk (39.75), below the silver minimum bar for production reporting."
+  },
+  "incident": {
+    "title": "TrustBoard: an agent declined to use b2fd91.order_entry_db.order_entry.product_categories",
+    "state": "ACTIVE",
+    "body": "An automated agent was asked to: Build a regional sales breakdown by product category for the sales team, using the regions and product category reference tables\n\nIt consulted the TrustBoard score for this dataset over MCP and declined to use it. Reason given:\n\nTrust score 39.75 (at-risk tier), below the silver minimum required for building a sales reporting pipeline.\n\nThis is real work that did not happen because of the state of this data. Raising the dataset's trust score clears it."
+  }
+}

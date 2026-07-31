@@ -16,7 +16,15 @@ from dataclasses import dataclass
 from mcp_client.datahub_connection import execute_graphql_retry
 from scoring.trust_score import AT_RISK_THRESHOLD, WEIGHTS, DatasetScore
 
-TITLE_PREFIX = "TrustBoard:"
+TITLE_PREFIX = "TrustBoard: audit"
+
+# Titles written by other components, which this module's dedup guard must not
+# claim. `TITLE_PREFIX` was "TrustBoard:" and matched by prefix, so it swept up
+# the Navigator's "TrustBoard: an agent declined to use ..." refusals: a weekly
+# run would resolve another agent's refusal with "Trust Score recovered", and an
+# open refusal filed first suppressed the at-risk incident that should have been
+# raised. One namespace, three writers, prefix matching.
+_FOREIGN_PREFIXES = ("TrustBoard: an agent declined to use", "TrustBoard: probe")
 
 # Paged, and `total` is selected so the walk knows when to stop. A fixed
 # `count: 50` was the same first-page-is-everything assumption the search code
@@ -104,6 +112,7 @@ def _active_incidents(graph, dataset_urn: str) -> list[str]:
         inc["urn"]
         for inc in incidents
         if (inc.get("title") or "").startswith(TITLE_PREFIX)
+        and not (inc.get("title") or "").startswith(_FOREIGN_PREFIXES)
         and ((inc.get("status") or {}).get("state") == "ACTIVE")
     ]
 

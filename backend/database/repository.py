@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.database.connection import SessionLocal, init_db
-from backend.database.models import DomainScore, LeaderboardPost
+from backend.database.models import DomainRoster, DomainScore, LeaderboardPost
 
 _SEED_FILE = os.path.join(os.path.dirname(__file__), "seed_data.json")
 
@@ -219,3 +219,28 @@ def _row_to_dict(r: DomainScore) -> dict:
         "rank_last_week": r.rank_last_week,
         "written_to_datahub": bool(r.written_to_datahub),
     }
+
+
+def save_domain_roster(roster: dict[str, str], week_of: date | None = None) -> int:
+    """Records which domain owned each dataset this week (idempotent per week)."""
+    init_db()
+    week = _monday_of(week_of or date.today())
+    with SessionLocal() as session:
+        session.query(DomainRoster).filter(DomainRoster.week_of == week).delete()
+        for dataset_urn, domain_urn in sorted(roster.items()):
+            session.add(DomainRoster(dataset_urn=dataset_urn, domain_urn=domain_urn, week_of=week))
+        session.commit()
+        return len(roster)
+
+
+def previous_domain_roster(week_of: date | None = None) -> dict[str, str]:
+    """Last week's dataset-to-domain map, for spotting datasets that left."""
+    init_db()
+    with SessionLocal() as session:
+        latest = session.scalar(select(DomainRoster.week_of).order_by(DomainRoster.week_of.desc()))
+    if latest is None:
+        return {}
+    week = _monday_of(week_of) if week_of is not None else latest
+    with SessionLocal() as session:
+        rows = session.scalars(select(DomainRoster).where(DomainRoster.week_of == week)).all()
+        return {r.dataset_urn: r.domain_urn for r in rows}

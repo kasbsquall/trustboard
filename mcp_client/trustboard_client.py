@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -23,10 +24,20 @@ from mcp.client.stdio import stdio_client
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# The environment has to be passed explicitly. Omitting `env` does not mean
+# "inherit": the MCP SDK substitutes a small allowlist (PATH, HOME, TEMP and
+# friends) and drops everything else, so no DATAHUB_* variable reached the server.
+# It worked anyway, which is what made it dangerous, because `cwd` happens to put
+# the server next to a .env file that pydantic-settings reads. Anywhere that file
+# is absent (a container, systemd, or the `claude mcp add` line this project's own
+# docs advertise) the server silently fell back to localhost:8080 with no token and
+# answered `not_found` for every asset, which the Gatekeeper then reported as
+# "check the URN" rather than as an outage. A wrong answer delivered confidently.
 SERVER = StdioServerParameters(
     command=sys.executable,
     args=["-m", "mcp_server.trustboard_mcp"],
     cwd=str(ROOT),
+    env=dict(os.environ),
 )
 
 

@@ -303,7 +303,7 @@ python -m mcp_server.trustboard_mcp   # or run the MCP server for other agents t
 trustboard/
 ├── agents/            auditor, scribe, incidents, herald, gatekeeper, trust_lookup
 ├── scoring/           pure Trust Score logic
-├── tests/             98 tests: scoring model, quality incentives, policy gate,
+├── tests/             111 tests: scoring model, quality incentives, policy gate,
 │                   MCP boundary, gatekeeper degradation, aspect-reading rules
 ├── mcp_client/        authenticated DataHub connection (SDK, retry with backoff)
 ├── mcp_server/        FastMCP server exposing get_trust_score to other agents
@@ -326,7 +326,7 @@ trustboard/
   searches instead of a first-page-is-the-graph assumption, an unreadable aspect excluded rather
   than scored as absent, a run that refuses to publish when it loses more than 20% of the graph, a
   tool error over MCP that becomes a readable refusal instead of a `KeyError` inside the caller's
-  decision logic, every threshold derived from one table, 98 tests and CI. Idempotency is checked by
+  decision logic, every threshold derived from one table, 111 tests and CI. Idempotency is checked by
   running the pipeline twice and diffing, not by a test; see Limitations.
 - **Originality:** the score becomes shared context that two separate processes consume over MCP, one
   applying a fixed policy and one reasoning about which asset to use at all, with a three-outcome

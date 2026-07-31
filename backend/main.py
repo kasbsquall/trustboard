@@ -77,6 +77,26 @@ def model() -> dict:
     }
 
 
+@app.get("/api/navigator-run")
+def navigator_run() -> dict:
+    """A recorded run of the Navigator, the one component that calls a model.
+
+    Served as data rather than described in prose because the agent is the part
+    of this project a reader is most entitled to be sceptical about, and a list of
+    the calls it actually made is the only answer to that. This is a saved run for
+    the same reason the leaderboard is a saved snapshot: there is no DataHub behind
+    this deployment. The incident it produced is real and lives in the graph of the
+    instance it ran against.
+    """
+    import json
+    from pathlib import Path
+
+    path = Path(__file__).parent / "database" / "navigator_run.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="No Navigator run has been recorded.")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 @app.get("/api/leaderboard")
 def leaderboard() -> dict:
     """Leaderboard for the most recent week, with current and previous rank."""

@@ -67,3 +67,24 @@ class LeaderboardPost(Base):
     top_domain: Mapped[str | None] = mapped_column(String(200))
     most_improved_domain: Mapped[str | None] = mapped_column(String(200))
     posted_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+
+class DomainRoster(Base):
+    """Which team owned which dataset, as of a given week.
+
+    Exists because unassigning a domain was a one-click way to raise a score.
+    A dataset with no domain was skipped outright, so a team could take its three
+    worst tables out of the catalog's ownership model and gain twenty points, which
+    is a worse outcome than the problem this project set out to solve: the metric
+    was paying people to orphan data.
+
+    Keeping last week's roster means a dataset that leaves is still counted against
+    the team that let it go, as unrated, until somebody else claims it.
+    """
+
+    __tablename__ = "domain_roster"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    dataset_urn: Mapped[str] = mapped_column(String(500), index=True)
+    domain_urn: Mapped[str] = mapped_column(String(300))
+    week_of: Mapped[date] = mapped_column(Date, index=True)

@@ -383,9 +383,18 @@ def _domain_of(graph, dataset_urn: str) -> str | None:
     return None
 
 
-def audit_all_domains(graph=None) -> list[AuditedDomain]:
-    """Walks DataHub and returns the Trust Score of each domain (team)."""
+def audit_all_domains(graph=None, previous_roster: dict[str, str] | None = None) -> list[AuditedDomain]:
+    """Walks DataHub and returns the Trust Score of each domain (team).
+
+    previous_roster maps dataset URN to domain URN as of the last run. A dataset
+    that has left its domain since then is still audited under the team that let
+    it go, because skipping it outright made unassigning a domain a one-click way
+    to raise a score: taking three weak tables out of the ownership model was
+    worth twenty points, which is a metric paying people to orphan data. Leaving
+    is now exactly as expensive as leaving the table broken.
+    """
     graph = graph or get_graph()
+    previous_roster = previous_roster or {}
     domain_names = list_domains(graph)
     now_ms = _today_ms()
 
@@ -406,12 +415,20 @@ def audit_all_domains(graph=None) -> list[AuditedDomain]:
 
     grouped: dict[str, list[DatasetSignals]] = {}
     unreadable: list[str] = []
+    orphaned: list[str] = []
+    roster: dict[str, str] = {}
 
     for urn in urns:
         try:
             domain_urn = _domain_of(graph, urn)
             if domain_urn is None or domain_urn not in domain_names:
-                continue
+                # Fall back to whoever owned it last week, so an unassignment
+                # cannot make a dataset disappear from the arithmetic.
+                domain_urn = previous_roster.get(urn)
+                if domain_urn is not None and domain_urn in domain_names:
+                    orphaned.append(urn)
+                else:
+                    continue
             signals = extract_signals(
                 graph,
                 urn,
@@ -423,6 +440,14 @@ def audit_all_domains(graph=None) -> list[AuditedDomain]:
             unreadable.append(str(err))
             continue
         grouped.setdefault(domain_urn, []).append(signals)
+        roster[urn] = domain_urn
+
+    if orphaned:
+        print(
+            f"  note: {len(orphaned)} dataset(s) left their domain since the last "
+            "run and are still counted against it",
+            file=sys.stderr,
+        )
 
     if unreadable:
         scored = sum(len(v) for v in grouped.values())
@@ -454,6 +479,9 @@ def audit_all_domains(graph=None) -> list[AuditedDomain]:
         )
 
     results.sort(key=lambda a: a.score.score, reverse=True)
+    # Attached rather than returned separately so every existing caller keeps
+    # working and the one that persists it can reach it.
+    audit_all_domains.last_roster = roster
     return results
 
 
