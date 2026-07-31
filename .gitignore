@@ -37,3 +37,7 @@ docs/hackathon-notes.md
 
 # Next.js incremental type-check cache
 frontend/tsconfig.tsbuildinfo
+
+# Stray screenshots from review sessions
+*.png
+!frontend/public/**/*.png

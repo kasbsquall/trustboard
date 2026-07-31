@@ -46,8 +46,11 @@ def _rich(urn: str, **over) -> DatasetSignals:
 
 
 def test_assertions_win_over_metadata_tests():
-    # Arrange: tests all pass, assertions mostly fail. Assertions describe the
-    # data, tests describe the catalog, so the data must decide the score.
+    # Arrange: tests all pass, assertions mostly fail. Preferring assertions is
+    # right, but switching to them unconditionally punished a team for writing its
+    # first real check, so the score is the better of the two and the source label
+    # says which one it came from. Here the capped catalog score wins on value
+    # while the run still reports both were read.
     signals = _rich(
         "urn:li:dataset:t.both",
         tests_passing=4,
@@ -62,8 +65,9 @@ def test_assertions_win_over_metadata_tests():
     result = score_dataset(signals)
 
     # Assert
-    assert result.quality_source is QualitySource.ASSERTIONS
-    assert result.components.quality == 25.0
+    # 4 passing catalog tests capped at 60 beats 1 passing assertion out of 4.
+    assert result.quality_source is QualitySource.TESTS
+    assert result.components.quality == 60.0
 
 
 def test_tests_are_used_when_there_are_no_assertions():

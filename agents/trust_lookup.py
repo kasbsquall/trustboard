@@ -99,6 +99,31 @@ def _extract_sp(structured_properties: dict | None) -> dict:
     return out
 
 
+def _corroborated_tier(sp: dict, tag_tier: str | None) -> str | None:
+    """The tier, derived from the score rather than read as a string.
+
+    Neither the tier property nor the tag is evidence. Both are editable from the
+    DataHub UI with ordinary catalog permissions, so a team that dislikes its
+    rating can hand-set either one. Requiring `score_version` as corroboration
+    only raised the forgery from one edit to two, because that is another
+    ordinary property with the same threat model.
+
+    So the tier is not read at all when a score is present: it is computed from
+    the score with the same table the model uses, which makes the gate's answer a
+    function of the number rather than of a label anyone can type. A tier with no
+    score behind it is not a claim we can check, and the honest answer for a claim
+    nobody can check is that this asset has not been measured.
+    """
+    from scoring.trust_score import trust_tier
+
+    if sp["trust_score"] is not None and sp["score_version"]:
+        return trust_tier(sp["trust_score"], rated=True)
+    # No score. The written tier is only honoured when it is the one value the
+    # scorer produces without a number, which is what an unrated asset looks like.
+    written = sp["trust_tier"] or tag_tier
+    return "unrated" if written == "unrated" and sp["score_version"] else None
+
+
 def read_domain_trust(urn: str, graph=None) -> dict:
     """Trust Score of a domain (team), read from its structured properties."""
     graph = graph or get_graph()
@@ -111,12 +136,20 @@ def read_domain_trust(urn: str, graph=None) -> dict:
     if not dom or not (dom.get("properties") or {}).get("name"):
         return {"urn": urn, "found": False}
     sp = _extract_sp(dom.get("structuredProperties"))
+    # Same rule as the dataset path, which this did not have. `trustTier` is an
+    # ordinary structured property, editable from the DataHub UI by anyone with
+    # catalog permissions, and reading it at face value meant a hand-set
+    # `trustTier=gold` on a domain came back as rated and trustworthy with no
+    # score and no model version behind it. The hardening had been applied to one
+    # of the two code paths.
+    tier = _corroborated_tier(sp, None)
     return {
         "urn": urn,
         "kind": "domain",
         "name": (dom.get("properties") or {}).get("name"),
         **sp,
-        "found": sp["trust_score"] is not None,
+        "trust_tier": tier,
+        "found": tier is not None,
     }
 
 
@@ -146,29 +179,8 @@ def read_dataset_trust(urn: str, graph=None) -> dict:
     domain_urn = domain_block.get("urn")
     domain_trust = read_domain_trust(domain_urn, graph=graph) if domain_urn else {}
 
-    # The tag is a badge TrustBoard puts on for people browsing the catalog. It
-    # is not evidence, because anyone with edit rights can apply it by hand from
-    # the DataHub UI, and it was read as an authority equal to the property
-    # TrustBoard itself wrote: a self-applied `trust.gold` came back as
-    # `status: "rated", trustworthy: true` with a null score behind it, so the
-    # gate could be opened by the very team it was meant to check. The tag is
-    # accepted only when TrustBoard's own write corroborates it, which is what
-    # score_version proves. Anything else is unrated, the honest answer for an
-    # asset nobody has measured.
-    # Neither the property nor the tag is evidence on its own. Both are editable
-    # from the DataHub UI with ordinary catalog permissions, so a team that
-    # dislikes its rating can hand-set io.trustboard.trustTier to "gold" and, with
-    # the tier read at face value, the gate answered `status: "rated",
-    # trustworthy: true` with a null score and a null model version sitting right
-    # there in the response. The first version of this guard covered the tag and
-    # left the property, which takes precedence, wide open.
-    #
-    # score_version is the corroboration because only the Scribe writes it, and it
-    # writes it in the same mutation as the score. A tier without one is a claim
-    # nobody can back, and the honest answer for a claim nobody can back is that
-    # we have not measured this asset.
-    corroborated = bool(sp["score_version"])
-    tier = (sp["trust_tier"] or tag_tier) if corroborated else None
+    tier = _corroborated_tier(sp, tag_tier)
+
     return {
         "urn": urn,
         "kind": "dataset",

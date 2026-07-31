@@ -263,19 +263,43 @@ def _quality_from(passing: int, cap: float) -> float:
 
 
 def _quality(s: DatasetSignals) -> tuple[float | None, QualitySource]:
-    """Assertions first, metadata tests only as a discounted fallback."""
+    """Assertions preferred, catalog tests as a discounted fallback, best of both.
+
+    Preferring assertions is right; switching to them unconditionally was not.
+    Taking the assertions branch the moment one exists meant a team with four
+    green catalog tests scoring 60 dropped to 0 the day it wrote its first real
+    assertion and that assertion failed. Adding a genuine check cost sixty points,
+    and deleting it paid them back, which is exactly the pathology this module was
+    rebuilt to remove, reintroduced one level up at the boundary between the two
+    sources.
+
+    It survived a 13x13 exhaustive sweep because that sweep set one source or the
+    other and never both, so the branch was structurally unreachable from the test
+    that was supposed to prove the property.
+
+    Taking the better of the two keeps the preference where it matters, since a
+    capped catalog score can never beat an assertion score built on the same
+    number of passing checks, while making it impossible for adding evidence to
+    lower the number.
+    """
+    candidates: list[tuple[float, QualitySource]] = []
+
     if s.has_assertions and (s.assertions_passing + s.assertions_failing) > 0:
-        return _quality_from(s.assertions_passing, 1.0), QualitySource.ASSERTIONS
+        candidates.append((_quality_from(s.assertions_passing, 1.0), QualitySource.ASSERTIONS))
 
     if s.has_tests and (s.tests_passing + s.tests_failing) > 0:
         # Capped, because a DataHub Test checks the catalog entry and an
         # assertion checks the data. This module has always said those are
         # different claims and then paid them the same, so a team could reach
-        # full quality marks without anything ever looking at a row. The cap is
-        # what makes the distinction cost something.
-        return _quality_from(s.tests_passing, TESTS_FALLBACK_CAP), QualitySource.TESTS
+        # full quality marks without anything ever looking at a row.
+        candidates.append((_quality_from(s.tests_passing, TESTS_FALLBACK_CAP), QualitySource.TESTS))
 
-    return None, QualitySource.NONE
+    if not candidates:
+        return None, QualitySource.NONE
+
+    # Ties go to assertions, which sort first, because when both sources agree on
+    # a number the one that looked at the data is the honest label for it.
+    return max(candidates, key=lambda c: c[0])
 
 
 def _documentation(s: DatasetSignals) -> float:

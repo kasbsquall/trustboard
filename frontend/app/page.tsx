@@ -257,12 +257,16 @@ export default async function Home() {
           {/* The earlier weeks of the trend were authored to give the demo a
               story. Saying so next to the chart costs a sentence and is the
               difference between a demo and a claim. */}
-          {teams.some((t) => t.synthetic) ? null : (
-            <p className="legend__note">
-              This week is a real audit. The three earlier weeks in each trend were authored for
-              the demo, not measured.
-            </p>
-          )}
+          {/* Backwards before: `some(t => t.synthetic) ? null : <note>` hid the
+              "these weeks were authored" line exactly when every row was
+              authored, and showed it only when none were. It rendered correctly
+              today purely because the current week is a real audit. The note is
+              about the trend, which always contains authored weeks, so it is
+              unconditional. */}
+          <p className="legend__note">
+            This week is a real audit. The three earlier weeks in each trend were authored for
+            the demo, not measured, and are drawn dashed in every chart.
+          </p>
         </div>
         <div>
           <h2>The agents behind it</h2>

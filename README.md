@@ -13,12 +13,20 @@ leaderboard to Slack. The score does not live in a private database: it lives in
 the next person, pipeline or agent inherits it.
 
 One thing to be straight about before you read further, because the word is doing a lot of work in
-this competition: **there is no model call anywhere in this codebase.** These are deterministic
-components with role names, not LLM agents, and the pipeline is four sequential steps rather than a
-planner. What is genuinely agentic is the boundary between them. The Gatekeeper is a separate process
-that reaches the score over MCP and changes its behaviour based on what a different component wrote
-into DataHub in an earlier run, which is the part of "agents that do real work" this project actually
-demonstrates. Calling the rest of it multi-agent would be padding.
+this competition. **Four of the five components make no model call at all.** The Auditor, the Scribe,
+the Herald and the Gatekeeper are deterministic functions with role names, and the weekly pipeline is
+four sequential steps rather than a planner. Calling those multi-agent would be padding, so this
+README does not.
+
+The fifth is different. **The Navigator** is handed a task in English and nothing else: no URN, no
+shortlist, no expected answer. It searches the catalog, asks TrustBoard about candidates over MCP,
+and decides which dataset the work should be built on. Which assets it looks at, how many, in what
+order, and what it settles on appear nowhere in the source. On the run recorded in
+`examples/navigator_run.txt` it searched seven times, adapting its vocabulary when the catalog did
+not use the words the task did, checked two finalists, and chose the gold one over a silver one it
+was allowed to take, explaining that the silver asset belonged to a team scoring 25.5. It then writes
+its refusals back into DataHub as incidents, so the owning team learns that an agent declined to build
+on their data and why. That is the loop closing: graph to agent to graph.
 
 Built for **Build with DataHub: The Agent Hackathon** (2026), track **Agents That Do Real Work**.
 
@@ -31,8 +39,8 @@ to win, and turns the resulting score into a trust signal that other agents cons
 
 ## What it does
 
-Three components that run the weekly cycle, plus a fourth that proves the point by consuming their
-output from outside the process:
+Three components that run the weekly cycle, a fourth that proves the point by consuming their output
+from outside the process, and a fifth that reasons over it:
 
 1. **The Auditor** connects to DataHub through the acryl-datahub SDK, walks every dataset by domain,
    and computes a composite Trust Score from four signals: quality, documentation, ownership and
@@ -55,6 +63,18 @@ output from outside the process:
    shares no database and no run with the pipeline, so what it inherits, it inherits from the graph.
    Its verdict has three outcomes rather than two: below the bar, unrated, or not in the graph at
    all. This closes the loop: agent to graph to agent.
+
+5. **The Navigator** is the one component that calls a model. Given a task in plain English it
+   searches DataHub for candidates, consults `is_trustworthy` on each over MCP, weighs what comes
+   back, and picks. When it turns down an asset that was a genuine candidate it records that refusal
+   onto the dataset as an incident, so a score TrustBoard wrote becomes a decision another agent made
+   becomes a signal the owning team receives. It needs `ANTHROPIC_API_KEY`; without one it raises a
+   readable error and the other four components are unaffected, because nothing else here touches a
+   model.
+
+   ```
+   python -m scripts.navigator_demo "Build the executive revenue dashboard"
+   ```
 
 A web dashboard (FastAPI + Next.js) shows the current league and each team's trend over time.
 
@@ -308,9 +328,10 @@ trustboard/
   tool error over MCP that becomes a readable refusal instead of a `KeyError` inside the caller's
   decision logic, every threshold derived from one table, 98 tests and CI. Idempotency is checked by
   running the pipeline twice and diffing, not by a test; see Limitations.
-- **Originality:** the score becomes shared context a second process consumes over MCP, with a
-  three-outcome verdict that distinguishes bad data from unmeasured data, and governance is framed
-  as a competitive league. Not another read-only quality dashboard.
+- **Originality:** the score becomes shared context that two separate processes consume over MCP, one
+  applying a fixed policy and one reasoning about which asset to use at all, with a three-outcome
+  verdict that distinguishes bad data from unmeasured data. The Navigator's refusals return to the
+  graph, so the loop runs graph to agent to graph rather than stopping at a log line.
 - **Real-World Usefulness:** the quality signal is real data assertions, freshness is when the data
   changed, teams are weighted by blast radius, the advice points at the highest-leverage fix, and an
   asset nobody has instrumented comes back unrated rather than accused.

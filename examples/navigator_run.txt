@@ -1,0 +1,34 @@
+Task: Build the executive revenue dashboard for the quarterly board pack
+
+The Navigator has no URN and no shortlist. It searches, checks trust
+over MCP, and decides.
+
+What it did:
+  find_datasets: {'query': 'revenue'} -> 8 match(es) for 'revenue'
+  find_datasets: {'query': 'quarterly board revenue summary'} -> 0 match(es)
+  find_datasets: {'query': 'finance revenue summary'} -> 0 match(es)
+  find_datasets: {'query': 'sales revenue fact table'} -> 0 match(es)
+  find_datasets: {'query': 'executive KPI dashboard'} -> 0 match(es)
+  find_datasets: {'query': 'orders'} -> 8 match(es) for 'orders'
+  find_datasets: {'query': 'essential KPI measures'} -> 1 match(es)
+  check_trust: Essential_KPI_Measures -> rated, trustworthy=True, tier=silver
+  check_trust: ORDER_ENTRY_DB.analytics.order_history -> rated, trustworthy=True, tier=gold
+  submit_plan: final answer
+
+Chose: urn:li:dataset:(urn:li:dataPlatform:dbt,b2fd91.ORDER_ENTRY_DB.analytics.order_history,PROD)
+Why:   Selected order_history (dbt, Data Platform Team) as the base for the executive
+       revenue dashboard: it is gold-tier, trust score 92.21, and provides the
+       incremental historical order data needed to compute revenue for the board pack.
+       Considered the Marketing-owned Essential KPI Measures PowerBI dataset as an
+       alternative; it passed the silver trust bar but had a much lower owning-team
+       trust score and less direct revenue lineage, so order_history was preferred.
+
+Turned down:
+  Essential_KPI_Measures: Passed trust check (silver, trustworthy) but is Marketing-owned
+  KPI layer with a low owning-team trust score (25.5) and less clearly revenue-specific;
+  order_history is a stronger, gold-tier source for the board-level revenue numbers.
+
+---
+Recorded verbatim from a real run on 2026-07-30 against the local DataHub. Nothing in
+scripts/navigator_demo.py names a dataset: the seven searches, the two trust checks and
+the choice between them are the agent's, not the author's.

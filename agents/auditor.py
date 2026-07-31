@@ -156,7 +156,11 @@ def _paged_search(graph, entity_type: str, extra_fields: str = "") -> list[dict]
         page = execute_graphql_retry(graph, query)["search"]
         results = page.get("searchResults") or []
         out.extend(r["entity"] for r in results)
-        start += _PAGE
+        # Advance by what came back, not by what was asked for. A GMS that caps
+        # the page size below _PAGE would have left this skipping the entities in
+        # between, silently, which is the same first-page-is-everything family of
+        # bug the loop exists to avoid. incidents.py already did it this way.
+        start += len(results)
         if not results or start >= (page.get("total") or 0):
             break
     return out
@@ -211,13 +215,30 @@ def fetch_assertion_results(graph, dataset_urns: list[str]) -> dict[str, tuple[i
         batch = dataset_urns[i : i + _ASSERTION_BATCH]
         try:
             res = execute_graphql_retry(graph, _ASSERTIONS_QUERY, variables={"urns": batch})
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
+            # All or nothing, and this used to return whatever it had collected
+            # so far. That looked harmless and was the worst kind of failure this
+            # codebase has: a batch erroring on URN 40 of 67 left the first
+            # thirty-nine scored from assertions and the rest silently demoted to
+            # catalog tests capped at 60%, a swing of roughly fourteen points
+            # decided by where a URN happened to sort. Nothing was added to the
+            # unreadable count, so MAX_UNREADABLE_RATIO never got to rule on the
+            # run, and the leaderboard published a confident number built partly
+            # on a timeout. A whole-graph fallback is a fact about the GMS that
+            # the run reports and every dataset shares; a partial one is noise
+            # wearing the shape of data.
+            if i > 0:
+                raise SignalReadError(
+                    f"assertions failed on batch {i // _ASSERTION_BATCH + 1} after "
+                    f"{len(out)} datasets had already been read; refusing to score "
+                    f"half the graph from assertions and half from catalog tests ({err})"
+                ) from err
             print(
                 f"  note: assertions unavailable on this GMS "
                 f"({type(err).__name__}), quality falls back to DataHub Tests",
                 file=sys.stderr,
             )
-            return out
+            return {}
         for entity in res.get("entities") or []:
             if not entity:
                 continue
