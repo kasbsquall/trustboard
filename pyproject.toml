@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trustboard"
+version = "2.1.0"
+description = "A weekly trust score for data teams, written back into DataHub and served to other agents over MCP"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+
+# Deliberately not pinned here. requirements.txt holds the exact versions the CI
+# and the demo run against; duplicating them would give two sources of truth that
+# drift. This block exists so the package imports, not so it resolves the world.
+dependencies = [
+  "acryl-datahub",
+  "mcp",
+  "fastmcp",
+  "pydantic-settings",
+  "typing-extensions",
+  "httpx",
+]
+
+# The whole interoperability claim rests on another team being able to run
+#
+#     claude mcp add trustboard -- trustboard-mcp
+#
+# and until this file existed that line was false. `python -m mcp_server.trustboard_mcp`
+# only resolves from the repository root, so an MCP client spawning the server from its
+# own working directory got ModuleNotFoundError. A judge tried it and reported exactly
+# that. A console script makes the advertised recipe the one that actually works.
+[project.scripts]
+trustboard-mcp = "mcp_server.trustboard_mcp:main"
+
+[tool.setuptools]
+packages = ["agents", "scoring", "mcp_client", "mcp_server", "backend", "backend.database"]
+# config.py sits at the repo root as a plain module rather than inside a package, and
+# every one of the packages above reaches it through `from config import get_settings`.
+# Listing only the packages installed a server that imported cleanly right up to the
+# settings call and then died on ModuleNotFoundError from a working directory that was
+# not the repo root, which is the exact failure this file exists to remove.
+py-modules = ["config"]

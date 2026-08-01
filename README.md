@@ -294,8 +294,27 @@ in the TypeScript to drift out of sync.
 
 ```bash
 python -m scripts.gatekeeper_demo  # a second agent consumes the score over MCP and decides GO / NO-GO
-python -m mcp_server.trustboard_mcp   # or run the MCP server for other agents to consume
+python -m scripts.navigator_demo "Build a regional sales breakdown by product category"
 ```
+
+### Registering the server with your own agent
+
+TrustBoard installs a console script, so any MCP client can spawn the server from its own
+working directory rather than from this repository:
+
+```bash
+pip install -e .
+claude mcp add trustboard -- trustboard-mcp
+```
+
+Five tools come back: `get_trust_score`, `is_trustworthy`, `get_team_leaderboard`,
+`find_datasets`, and `record_refusal`. The first four are read-only; `record_refusal` is the
+one that writes, and it is annotated as such so a client can gate it behind approval. Each
+publishes an `outputSchema`, and a failure arrives as an MCP error with an actionable message
+rather than as a successful result the caller has to parse for bad news.
+
+The server needs `DATAHUB_GMS_URL` and `DATAHUB_GMS_TOKEN` in its environment. It reads them
+from the environment it is spawned with, not from a `.env` next to the code.
 
 ## Project structure
 
@@ -303,16 +322,17 @@ python -m mcp_server.trustboard_mcp   # or run the MCP server for other agents t
 trustboard/
 ├── agents/            auditor, scribe, incidents, herald, gatekeeper, trust_lookup
 ├── scoring/           pure Trust Score logic
-├── tests/             111 tests: scoring model, quality incentives, policy gate,
+├── tests/             113 tests: scoring model, quality incentives, policy gate,
 │                   MCP boundary, gatekeeper degradation, aspect-reading rules
 ├── mcp_client/        authenticated DataHub connection (SDK, retry with backoff)
-├── mcp_server/        FastMCP server exposing get_trust_score to other agents
+├── mcp_server/        FastMCP server exposing five tools to other agents
 ├── backend/           FastAPI + SQLite history
 ├── frontend/          Next.js dashboard
 ├── scripts/           datapack loader, demo seed, history seed, write-back probe
 ├── datahub-skill-contribution/   the datahub-trust-score skill, as submitted upstream
 ├── examples/          sample outputs (leaderboard, Slack payload, domain scores)
 ├── .github/workflows/ CI: tests, lint, import check with no GMS, frontend build
+├── pyproject.toml     installs the trustboard-mcp console script
 └── run_week.py        weekly orchestrator
 ```
 
@@ -321,12 +341,12 @@ trustboard/
 - **Use of DataHub:** reads assertions, assertion run events, catalog tests, ownership, schema and
   field docs, glossary terms, upstream lineage, operations and dataset profiles. Writes back four
   structured properties on domains and datasets, tier tags, domain descriptions, operational
-  incidents, and three MCP tools.
+  incidents, and five MCP tools, one of which writes an agent's refusal back onto the dataset.
 - **Technical Execution:** mutations deliberately not retried, reads retried with backoff, paged
   searches instead of a first-page-is-the-graph assumption, an unreadable aspect excluded rather
   than scored as absent, a run that refuses to publish when it loses more than 20% of the graph, a
   tool error over MCP that becomes a readable refusal instead of a `KeyError` inside the caller's
-  decision logic, every threshold derived from one table, 111 tests and CI. Idempotency is checked by
+  decision logic, every threshold derived from one table, 113 tests and CI. Idempotency is checked by
   running the pipeline twice and diffing, not by a test; see Limitations.
 - **Originality:** the score becomes shared context that two separate processes consume over MCP, one
   applying a fixed policy and one reasoning about which asset to use at all, with a three-outcome

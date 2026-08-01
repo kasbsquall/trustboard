@@ -209,5 +209,17 @@ def record_refusal(urn: str, task: str, reason: str) -> RefusalReceipt:
     return asset_search.record_refusal(urn, task, reason)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Entry point for the `trustboard-mcp` console script.
+
+    Named rather than inlined under `__main__` because a console script has to
+    point at a callable. `python -m mcp_server.trustboard_mcp` still works and
+    still lands here; the difference is that the installed script resolves from
+    any working directory, which is what an MCP client actually does when it
+    spawns a server.
+    """
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()

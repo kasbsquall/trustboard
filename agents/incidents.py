@@ -188,9 +188,9 @@ def remediate(graph, dataset_scores: list[DatasetScore], threshold: float = AT_R
                     "remove it deliberately if it was asserting the wrong thing."
                 )
             else:
-                title = f"{TITLE_PREFIX} {_short_name(ds.urn)} is at-risk ({ds.score:.0f}/100)"
+                title = f"{TITLE_PREFIX} {_short_name(ds.urn)} is at-risk ({ds.score:.1f}/100)"
                 desc = (
-                    f"Trust Score {ds.score:.0f}/100, below the {threshold:.0f} threshold. "
+                    f"Trust Score {ds.score:.1f}/100, below the {threshold:.0f} threshold. "
                     f"Weakest signal: **{weak}**. Improving {weak} will clear this incident."
                 )
             try:
@@ -203,7 +203,7 @@ def remediate(graph, dataset_scores: list[DatasetScore], threshold: float = AT_R
                 try:
                     execute_graphql_retry(
                         graph, _RESOLVE,
-                        variables={"urn": inc_urn, "msg": f"Trust Score recovered to {ds.score:.0f}/100."},
+                        variables={"urn": inc_urn, "msg": f"Trust Score recovered to {ds.score:.1f}/100."},
                     )
                     resolved += 1
                 except Exception:  # noqa: BLE001

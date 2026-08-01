@@ -12,6 +12,7 @@ than on what it returned.
 """
 from __future__ import annotations
 
+import contextlib
 import re
 import sys
 from pathlib import Path
@@ -151,3 +152,80 @@ def test_assertions_missing_on_the_very_first_batch_is_a_clean_fallback():
         assert auditor.fetch_assertion_results(object(), [_dataset(0)]) == {}
     finally:
         auditor.execute_graphql_retry = original
+
+
+# --------------------------------------------------------------- roster wiring
+#
+# The anti-gaming guard shipped in three pieces that were never connected:
+# `audit_all_domains` accepted `previous_roster` and used it, `repository.py` had
+# `save_domain_roster` and `previous_domain_roster`, and the weekly orchestrator
+# called neither. So the lookup returned {} on every run and a team could still
+# raise its score by unassigning its worst datasets from the domain, which is the
+# exact exploit the commit message said it had closed.
+#
+# These assert on the WIRING rather than on the scoring, because the scoring was
+# never the part that broke. A unit test of `audit_all_domains(previous_roster=...)`
+# would have passed throughout the whole period the exploit was live.
+
+
+def test_weekly_run_feeds_last_weeks_roster_into_the_audit(monkeypatch):
+    """run_week must read the stored roster and hand it to the auditor."""
+    import run_week
+
+    seen = {}
+    monkeypatch.setattr(run_week, "previous_domain_roster", lambda: {"urn:ds:a": "urn:li:domain:team"})
+    monkeypatch.setattr(run_week, "save_domain_roster", lambda r, *a, **k: len(r))
+
+    def _fake_audit(graph=None, previous_roster=None):
+        seen["roster"] = previous_roster
+        _fake_audit.last_roster = {"urn:ds:a": "urn:li:domain:team"}
+        return []
+
+    monkeypatch.setattr(run_week, "audit_all_domains", _fake_audit)
+    monkeypatch.setattr(run_week, "print_quality_sources", lambda r: None)
+    monkeypatch.setattr(run_week, "get_graph", lambda: object())
+    monkeypatch.setattr(run_week.scribe, "write_all", lambda *a, **k: SimpleNamespace(written_urns=set()))
+    monkeypatch.setattr(run_week, "save_weekly_snapshot", lambda rows: __import__("datetime").date(2026, 7, 27))
+    monkeypatch.setattr(run_week, "previous_week_scores", lambda: {})
+    monkeypatch.setattr(run_week.herald, "publish_leaderboard", lambda *a, **k: {"ok": False})
+    monkeypatch.setattr(run_week, "record_leaderboard_post", lambda *a, **k: None)
+
+    # Anything after the audit is out of scope here; the assertion below is the point,
+    # and the stubs above stop short of a full happy path on purpose.
+    with contextlib.suppress(Exception):
+        run_week.main()
+
+    assert seen["roster"] == {"urn:ds:a": "urn:li:domain:team"}, (
+        "run_week called the auditor without last week's roster, so a dataset "
+        "unassigned from its domain stops being counted against that team"
+    )
+
+
+def test_weekly_run_persists_this_weeks_roster(monkeypatch):
+    """A roster that is never saved makes next week's lookup empty forever."""
+    import run_week
+
+    saved = {}
+    monkeypatch.setattr(run_week, "previous_domain_roster", lambda: {})
+    monkeypatch.setattr(run_week, "save_domain_roster", lambda r, *a, **k: saved.update(r) or len(r))
+
+    def _fake_audit(graph=None, previous_roster=None):
+        _fake_audit.last_roster = {"urn:ds:b": "urn:li:domain:team"}
+        return []
+
+    monkeypatch.setattr(run_week, "audit_all_domains", _fake_audit)
+    monkeypatch.setattr(run_week, "print_quality_sources", lambda r: None)
+    monkeypatch.setattr(run_week, "get_graph", lambda: object())
+    monkeypatch.setattr(run_week.scribe, "write_all", lambda *a, **k: SimpleNamespace(written_urns=set()))
+    monkeypatch.setattr(run_week, "save_weekly_snapshot", lambda rows: __import__("datetime").date(2026, 7, 27))
+    monkeypatch.setattr(run_week, "previous_week_scores", lambda: {})
+    monkeypatch.setattr(run_week.herald, "publish_leaderboard", lambda *a, **k: {"ok": False})
+    monkeypatch.setattr(run_week, "record_leaderboard_post", lambda *a, **k: None)
+
+    with contextlib.suppress(Exception):
+        run_week.main()
+
+    assert saved == {"urn:ds:b": "urn:li:domain:team"}, (
+        "run_week did not persist the roster the auditor built, so next week's "
+        "previous_domain_roster() returns {} and the guard never engages"
+    )
