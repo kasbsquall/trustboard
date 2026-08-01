@@ -3,7 +3,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org)
 
-**Demo video (1:49): https://youtu.be/6aZ8X2LyaNQ**
+**Demo video (2:17): https://youtu.be/aSlETZw6LDo**
 **Live demo: https://trustboard.duckdns.org** (a saved snapshot of a real run, see below)
 
 **TrustBoard turns data governance into a weekly sport.** Four cooperating components read quality
@@ -356,7 +356,7 @@ trustboard/
   changed, teams are weighted by blast radius, the advice points at the highest-leverage fix, and an
   asset nobody has instrumented comes back unrated rather than accused.
 - **Submission Quality:** reproducible quickstart, sample outputs from one real run, a [demo
-  video](https://youtu.be/6aZ8X2LyaNQ), and a live board at trustboard.duckdns.org.
+  video](https://youtu.be/aSlETZw6LDo), and a live board at trustboard.duckdns.org.
 
 ## Limitations
 
